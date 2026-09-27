@@ -1,14 +1,12 @@
-// 🔥 Bazario Firebase Config
-// Nisar bhai: Firebase Console > Bazario project > Project settings > Your apps se
-// real values yahan paste karni hain. Tab tak app "setup mode" me rahega.
+// 🔥 Bazario Firebase Config (project: bazario-2920a)
 window.firebaseConfig = {
-  apiKey: "PASTE_API_KEY_HERE",
-  authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
-  databaseURL: "https://PASTE_PROJECT_ID-default-rtdb.firebaseio.com/",
-  projectId: "PASTE_PROJECT_ID",
-  storageBucket: "PASTE_PROJECT_ID.appspot.com",
-  messagingSenderId: "PASTE_SENDER_ID",
-  appId: "PASTE_APP_ID"
+  apiKey: "AIzaSyAPx_M0Et96w7qY9GB7bZk-wsxGnule9c8",
+  authDomain: "bazario-2920a.firebaseapp.com",
+  databaseURL: "https://bazario-2920a-default-rtdb.firebaseio.com",
+  projectId: "bazario-2920a",
+  storageBucket: "bazario-2920a.firebasestorage.app",
+  messagingSenderId: "275381335548",
+  appId: "1:275381335548:web:85319a7fd932036c18ee79"
 };
 
 window.FIREBASE_READY = !String(window.firebaseConfig.apiKey).startsWith('PASTE');
