@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ad डालो - Bazario</title>
+<meta name="theme-color" content="#0d9488">
+<link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-row">
+    <div>
+      <div class="brand">Bazario<span>.</span></div>
+      <div class="brand-sub">नया Ad डालो</div>
+    </div>
+    <button class="icon-btn" onclick="history.back()">✕</button>
+  </div>
+</header>
+
+<div class="page">
+  <div class="card">
+    <div class="field"><label>Ad का title *</label><input id="p-title" maxlength="80" placeholder="जैसे: Hero Splendor 2019, एकदम चालू"></div>
+    <div class="field"><label>दाम (₹) *</label><input id="p-price" type="number" min="0" placeholder="जैसे: 25000"></div>
+    <div class="field"><label>Category *</label><select id="p-cat"></select></div>
+    <div class="field"><label>Description</label><textarea id="p-desc" placeholder="चीज़ की हालत, कितनी पुरानी, क्यों बेच रहे हो..."></textarea></div>
+    <div class="field">
+      <label>Photos (1-5) - pehli photo cover banegi</label>
+      <input type="file" id="p-photos" accept="image/*" multiple>
+      <div class="photo-preview" id="photo-preview"></div>
+    </div>
+    <div class="btn-row">
+      <div class="field" style="flex:1"><label>ज़िला *</label><input id="p-district" placeholder="जैसे: Maharajganj"></div>
+      <div class="field" style="flex:1"><label>गाँव/शहर *</label><input id="p-village" placeholder="जैसे: Bahaduri Bazar"></div>
+    </div>
+    <div class="field"><label>मोबाइल नंबर (buyer इसी पर call/WhatsApp करेगा) *</label><input id="p-phone" type="tel" maxlength="10" placeholder="10 अंकों का नंबर"></div>
+    <button class="btn btn-primary" id="submit-btn" onclick="submitAd()">🚀 Ad डालो</button>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <a class="nav-item" href="index.html"><span class="ic">🏠</span>होम</a>
+  <a class="nav-item nav-post active" href="post.html"><span class="ic">＋</span>Ad डालो</a>
+  <a class="nav-item" href="myads.html"><span class="ic">📦</span>मेरे Ads</a>
+</nav>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="./js/firebaseConfig.js"></script>
+<script src="./js/app.js"></script>
+<script>
+let photos = [];
+
+document.getElementById('p-cat').innerHTML =
+  window.CATEGORIES.filter(c => c.id !== 'all').map(c => `<option value="${c.id}">${c.icon} ${c.label}</option>`).join('');
+
+document.getElementById('p-photos').addEventListener('change', async (e) => {
+  const files = [...e.target.files].slice(0, 5 - photos.length);
+  for (const f of files) {
+    try { photos.push(await compressPhoto(f)); } catch (err) { showToast('⚠️ Photo लोड नहीं हुई'); }
+  }
+  e.target.value = '';
+  renderPhotoPreview();
+});
+
+function renderPhotoPreview() {
+  document.getElementById('photo-preview').innerHTML = photos.map((p, i) =>
+    `<div class="ph"><img src="${p}"><button class="rm" onclick="photos.splice(${i},1);renderPhotoPreview()">✕</button></div>`).join('');
+}
+
+async function submitAd() {
+  if (!window.FIREBASE_READY) return alert('Firebase setup abhi baaki hai।');
+  if (!window.currentUser) { openAuthModal(); return showToast('पहले लॉगिन करो'); }
+  const title = document.getElementById('p-title').value.trim();
+  const price = Number(document.getElementById('p-price').value);
+  const category = document.getElementById('p-cat').value;
+  const desc = document.getElementById('p-desc').value.trim();
+  const district = document.getElementById('p-district').value.trim();
+  const village = document.getElementById('p-village').value.trim();
+  const phone = document.getElementById('p-phone').value.trim();
+  if (!title || !price || !district || !village || !phone) return alert('Title, दाम, ज़िला, गाँव और मोबाइल ज़रूरी हैं।');
+  if (!/^\d{10}$/.test(phone)) return alert('मोबाइल नंबर 10 अंकों का सही डालो।');
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = 'डाला जा रहा है...';
+  try {
+    const ad = {
+      title, price, category, desc, district, village, phone,
+      photos: photos.slice(0, 5),
+      uid: window.currentUser.uid,
+      sellerName: (window.userProfile && window.userProfile.name) || 'Seller',
+      createdAt: Date.now(),
+      status: 'active'
+    };
+    await window.db.ref('ads').push(ad);
+    showToast('🎉 Ad live हो गया!');
+    setTimeout(() => location.href = 'index.html', 800);
+  } catch (e) {
+    alert('Ad नहीं डल पाया: ' + e.message);
+    btn.disabled = false; btn.textContent = '🚀 Ad डालो';
+  }
+}
+
+renderSetupBannerIfNeeded();
+injectAuthModal();
+initAuth((user) => {
+  if (user && window.userProfile && window.userProfile.phone && !document.getElementById('p-phone').value) {
+    document.getElementById('p-phone').value = window.userProfile.phone;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "rules": {
+    "ads": {
+      ".read": true,
+      ".indexOn": ["createdAt", "uid", "category", "status"],
+      "$adId": {
+        ".write": "auth != null && (auth.token.email === 'nisar733308@gmail.com' || (!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && data.child('uid').val() === auth.uid))"
+      }
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'nisar733308@gmail.com')",
+        ".write": "auth != null && (auth.uid === $uid || auth.token.email === 'nisar733308@gmail.com')"
+      }
+    }
+  }
+}

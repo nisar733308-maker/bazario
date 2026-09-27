@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bazario - अपने इलाके का बाज़ार</title>
+<meta name="theme-color" content="#0d9488">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/png" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-row">
+    <div>
+      <div class="brand">Bazario<span>.</span></div>
+      <div class="brand-sub">अपने इलाके का बाज़ार</div>
+    </div>
+    <button class="icon-btn" id="auth-btn" onclick="onAuthBtn()">🔑</button>
+  </div>
+</header>
+
+<div class="search-wrap">
+  <div class="search-box">
+    <input id="search" placeholder="क्या ढूंढ रहे हो? (साइकिल, गाय, मोबाइल...)" oninput="onSearch(this.value)">
+    <button onclick="onSearch(document.getElementById('search').value)">🔍</button>
+  </div>
+</div>
+
+<div class="cats" id="cats"></div>
+<div class="ads-grid" id="ads-grid"><p class="empty-state" style="grid-column:1/-1">लोड हो रहा है...</p></div>
+
+<nav class="bottom-nav">
+  <a class="nav-item active" href="index.html"><span class="ic">🏠</span>होम</a>
+  <a class="nav-item nav-post" href="post.html"><span class="ic">＋</span>Ad डालो</a>
+  <a class="nav-item" href="myads.html"><span class="ic">📦</span>मेरे Ads</a>
+</nav>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="./js/firebaseConfig.js"></script>
+<script src="./js/app.js"></script>
+<script>
+let allAds = [], activeCat = 'all', searchText = '';
+
+function onAuthBtn() {
+  if (window.currentUser) { if (confirm('लॉगआउट करना है?')) doLogout(); }
+  else openAuthModal();
+}
+
+function renderCats() {
+  const el = document.getElementById('cats');
+  el.innerHTML = window.CATEGORIES.map(c =>
+    `<div class="cat-chip ${c.id === activeCat ? 'active' : ''}" onclick="setCat('${c.id}')">${c.icon} ${c.label}</div>`).join('');
+}
+function setCat(id) { activeCat = id; renderCats(); renderAds(); }
+function onSearch(v) { searchText = v.trim().toLowerCase(); renderAds(); }
+
+function renderAds() {
+  const grid = document.getElementById('ads-grid');
+  let list = allAds.filter(a => a.status === 'active');
+  if (activeCat !== 'all') list = list.filter(a => a.category === activeCat);
+  if (searchText) list = list.filter(a => (a.title + ' ' + (a.desc||'') + ' ' + (a.village||'') + ' ' + (a.district||'')).toLowerCase().includes(searchText));
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="big">🔍</div>कोई Ad नहीं मिला।<br>पहला Ad तुम डालो!</div>`;
+    return;
+  }
+  grid.innerHTML = list.map(a => `
+    <div class="ad-card" onclick="location.href='ad.html?id=${a.id}'">
+      ${a.photos && a.photos[0] ? `<img class="ad-photo" src="${a.photos[0]}" loading="lazy">` : `<div class="ad-photo-ph">${(window.CATEGORIES.find(c=>c.id===a.category)||{}).icon || '📦'}</div>`}
+      <div class="ad-body">
+        <div class="ad-price">${fmtPrice(a.price)}</div>
+        <div class="ad-title">${esc(a.title)}</div>
+        <div class="ad-loc">📍 ${esc(a.village || '')}${a.village && a.district ? ', ' : ''}${esc(a.district || '')} · ${timeAgo(a.createdAt)}</div>
+      </div>
+    </div>`).join('');
+}
+
+async function loadAds() {
+  if (!window.FIREBASE_READY) { document.getElementById('ads-grid').innerHTML = ''; return; }
+  try {
+    const snap = await window.db.ref('ads').orderByChild('createdAt').once('value');
+    const val = snap.val() || {};
+    allAds = Object.keys(val).map(id => ({ id, ...val[id] })).sort((a, b) => b.createdAt - a.createdAt);
+    renderAds();
+  } catch (e) {
+    document.getElementById('ads-grid').innerHTML = '<div class="empty-state" style="grid-column:1/-1">⚠️ Ads लोड नहीं हुए। इंटरनेट चेक करो।</div>';
+  }
+}
+
+renderCats();
+renderSetupBannerIfNeeded();
+injectAuthModal();
+initAuth((user) => {
+  document.getElementById('auth-btn').textContent = user ? '👤' : '🔑';
+});
+loadAds();
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+</script>
+</body>
+</html>

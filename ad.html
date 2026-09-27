@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ad - Bazario</title>
+<meta name="theme-color" content="#0d9488">
+<link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-row">
+    <div>
+      <div class="brand">Bazario<span>.</span></div>
+      <div class="brand-sub">Ad details</div>
+    </div>
+    <button class="icon-btn" onclick="history.back()">✕</button>
+  </div>
+</header>
+
+<div class="page" id="page"><p class="empty-state">लोड हो रहा है...</p></div>
+
+<nav class="bottom-nav">
+  <a class="nav-item" href="index.html"><span class="ic">🏠</span>होम</a>
+  <a class="nav-item nav-post" href="post.html"><span class="ic">＋</span>Ad डालो</a>
+  <a class="nav-item" href="myads.html"><span class="ic">📦</span>मेरे Ads</a>
+</nav>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="./js/firebaseConfig.js"></script>
+<script src="./js/app.js"></script>
+<script>
+const id = new URLSearchParams(location.search).get('id');
+
+async function loadAd() {
+  const page = document.getElementById('page');
+  if (!id || !window.FIREBASE_READY) { page.innerHTML = '<div class="empty-state"><div class="big">😕</div>Ad नहीं मिला।</div>'; return; }
+  try {
+    const snap = await window.db.ref('ads/' + id).once('value');
+    const a = snap.val();
+    if (!a || a.status !== 'active') { page.innerHTML = '<div class="empty-state"><div class="big">😕</div>Ye Ad ab available nahi hai।</div>'; return; }
+    const photos = (a.photos || []);
+    const isOwner = window.currentUser && window.currentUser.uid === a.uid;
+    const waText = encodeURIComponent('Namaste! Bazario pe aapka Ad dekha: ' + a.title + ' (' + fmtPrice(a.price) + '). Kya ye abhi available hai?');
+    page.innerHTML = `
+      ${photos.length ? `<div class="detail-photos">${photos.map(p => `<img src="${p}">`).join('')}</div>` : ''}
+      <div class="card" style="margin-top:14px">
+        <span class="badge">${catLabel(a.category)}</span>
+        <div class="detail-price" style="margin-top:8px">${fmtPrice(a.price)}</div>
+        <div class="detail-title">${esc(a.title)}</div>
+        <div class="detail-meta">📍 ${esc(a.village)}, ${esc(a.district)} · ${timeAgo(a.createdAt)}</div>
+        ${a.desc ? `<div class="detail-desc">${esc(a.desc)}</div>` : ''}
+      </div>
+      <div class="card seller-card">
+        <div class="seller-avatar">${esc((a.sellerName || 'S')[0].toUpperCase())}</div>
+        <div style="flex:1">
+          <div style="font-weight:700">${esc(a.sellerName || 'Seller')}</div>
+          <div style="font-size:.8rem;color:var(--ink-soft)">Bazario seller</div>
+        </div>
+      </div>
+      ${isOwner ? `
+        <div class="btn-row" style="margin-top:6px">
+          <button class="btn btn-outline" onclick="markSold()">✅ बिक गया (हटाओ)</button>
+        </div>` : `
+        <div class="btn-row" style="margin-top:6px">
+          <a class="btn btn-primary" href="tel:+91${a.phone}">📞 Call करो</a>
+          <a class="btn btn-amber" href="https://wa.me/91${a.phone}?text=${waText}" target="_blank">💬 WhatsApp</a>
+        </div>`}
+    `;
+  } catch (e) {
+    page.innerHTML = '<div class="empty-state">⚠️ लोड नहीं हुआ।</div>';
+  }
+}
+
+async function markSold() {
+  if (!confirm('Ad हटा दें? (बिक गया)')) return;
+  await window.db.ref('ads/' + id).update({ status: 'sold' });
+  showToast('✅ Ad हटा दिया');
+  setTimeout(() => location.href = 'myads.html', 700);
+}
+
+renderSetupBannerIfNeeded();
+injectAuthModal();
+initAuth(() => loadAd());
+</script>
+</body>
+</html>

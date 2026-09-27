@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>मेरे Ads - Bazario</title>
+<meta name="theme-color" content="#0d9488">
+<link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-row">
+    <div>
+      <div class="brand">Bazario<span>.</span></div>
+      <div class="brand-sub">मेरे Ads</div>
+    </div>
+    <button class="icon-btn" onclick="location.href='index.html'">🏠</button>
+  </div>
+</header>
+
+<div class="page" id="page"><p class="empty-state">लोड हो रहा है...</p></div>
+
+<nav class="bottom-nav">
+  <a class="nav-item" href="index.html"><span class="ic">🏠</span>होम</a>
+  <a class="nav-item nav-post" href="post.html"><span class="ic">＋</span>Ad डालो</a>
+  <a class="nav-item active" href="myads.html"><span class="ic">📦</span>मेरे Ads</a>
+</nav>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="./js/firebaseConfig.js"></script>
+<script src="./js/app.js"></script>
+<script>
+async function loadMyAds() {
+  const page = document.getElementById('page');
+  if (!window.FIREBASE_READY) { page.innerHTML = ''; return; }
+  if (!window.currentUser) {
+    page.innerHTML = `<div class="empty-state"><div class="big">🔑</div>Apne Ads dekhne ke liye login karo।<br><br><button class="btn btn-primary" style="max-width:220px;margin:0 auto" onclick="openAuthModal()">लॉगिन / रजिस्टर</button></div>`;
+    return;
+  }
+  try {
+    const snap = await window.db.ref('ads').orderByChild('uid').equalTo(window.currentUser.uid).once('value');
+    const val = snap.val() || {};
+    const ads = Object.keys(val).map(id => ({ id, ...val[id] })).sort((a, b) => b.createdAt - a.createdAt);
+    if (!ads.length) {
+      page.innerHTML = `<div class="empty-state"><div class="big">📦</div>Abhi tak koi Ad nahi।<br><br><a class="btn btn-primary" style="max-width:220px;margin:0 auto" href="post.html">पहला Ad डालो</a></div>`;
+      return;
+    }
+    page.innerHTML = ads.map(a => `
+      <div class="card my-ad-row">
+        ${a.photos && a.photos[0] ? `<img src="${a.photos[0]}">` : `<div style="width:64px;height:64px;border-radius:12px;background:#e0f2f1;display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0">📦</div>`}
+        <div class="my-ad-info">
+          <div style="font-weight:700">${esc(a.title)}</div>
+          <div style="color:var(--teal-600);font-weight:800">${fmtPrice(a.price)}</div>
+          <div style="font-size:.72rem;color:var(--ink-soft)">${a.status === 'active' ? '🟢 Live' : '⚫ ' + a.status} · ${timeAgo(a.createdAt)}</div>
+        </div>
+        <div class="my-ad-actions">
+          <button class="small-btn" onclick="toggleStatus('${a.id}','${a.status}')">${a.status === 'active' ? '⏸️' : '▶️'}</button>
+          <button class="small-btn red" onclick="delAd('${a.id}')">🗑️</button>
+        </div>
+      </div>`).join('');
+  } catch (e) {
+    page.innerHTML = '<div class="empty-state">⚠️ लोड नहीं हुआ।</div>';
+  }
+}
+
+async function toggleStatus(id, status) {
+  await window.db.ref('ads/' + id).update({ status: status === 'active' ? 'paused' : 'active' });
+  loadMyAds();
+}
+async function delAd(id) {
+  if (!confirm('Pakka delete karein?')) return;
+  await window.db.ref('ads/' + id).remove();
+  showToast('🗑️ Ad delete ho gaya');
+  loadMyAds();
+}
+
+renderSetupBannerIfNeeded();
+injectAuthModal();
+initAuth(() => loadMyAds());
+</script>
+</body>
+</html>
