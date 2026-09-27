@@ -100,19 +100,71 @@ window.injectAuthModal = () => {
   div.innerHTML = `
   <div class="modal" id="auth-modal">
     <div class="modal-card">
-      <button class="modal-close" onclick="closeAuthModal()">✕</button>
-      <div class="modal-title">🔑 लॉगिन / रजिस्टर</div>
-      <div class="field"><label>पूरा नाम (नए अकाउंट के लिए)</label><input id="auth-name" placeholder="जैसे: Ramesh Kumar"></div>
-      <div class="field"><label>मोबाइल नंबर (नए अकाउंट के लिए)</label><input id="auth-phone" type="tel" maxlength="10" placeholder="10 अंकों का नंबर"></div>
-      <div class="field"><label>ईमेल *</label><input id="auth-email" type="email" placeholder="aap@example.com"></div>
-      <div class="field"><label>पासवर्ड *</label><input id="auth-pass" type="password" placeholder="कम से कम 6 अक्षर"></div>
+      <button class="modal-close" onclick="closeAuthModal()">\u2715</button>
+      <div class="modal-title">\ud83d\udd11 \u0932\u0949\u0917\u093f\u0928 / \u0930\u091c\u093f\u0938\u094d\u091f\u0930</div>
+      <div class="field"><label>\u092a\u0942\u0930\u093e \u0928\u093e\u092e (\u0928\u090f \u0905\u0915\u093e\u0909\u0902\u091f \u0915\u0947 \u0932\u093f\u090f)</label><input id="auth-name" placeholder="\u091c\u0948\u0938\u0947: Ramesh Kumar"></div>
+      <div class="field"><label>\u092e\u094b\u092c\u093e\u0907\u0932 \u0928\u0902\u092c\u0930 (\u0928\u090f \u0905\u0915\u093e\u0909\u0902\u091f \u0915\u0947 \u0932\u093f\u090f)</label><input id="auth-phone" type="tel" maxlength="10" placeholder="10 \u0905\u0902\u0915\u094b\u0902 \u0915\u093e \u0928\u0902\u092c\u0930"></div>
+      <div class="field"><label>\u0908\u092e\u0947\u0932 *</label><input id="auth-email" type="email" placeholder="aap@example.com"></div>
+      <div class="field"><label>\u092a\u093e\u0938\u0935\u0930\u094d\u0921 *</label><input id="auth-pass" type="password" placeholder="\u0915\u092e \u0938\u0947 \u0915\u092e 6 \u0905\u0915\u094d\u0937\u0930"></div>
       <div class="btn-row">
-        <button class="btn btn-primary" onclick="doLogin()">लॉगिन</button>
-        <button class="btn btn-amber" onclick="doRegister()">नया अकाउंट</button>
+        <button class="btn btn-primary" onclick="doLogin()">\u0932\u0949\u0917\u093f\u0928</button>
+        <button class="btn btn-amber" onclick="doRegister()">\u0928\u092f\u093e \u0905\u0915\u093e\u0909\u0902\u091f</button>
       </div>
+      <div class="otp-divider"><span>YA</span></div>
+      <div class="field"><label>\ud83d\udcf1 \u092e\u094b\u092c\u093e\u0907\u0932 \u0938\u0947 \u0932\u0949\u0917\u093f\u0928 (OTP)</label><input id="otp-phone" type="tel" maxlength="10" placeholder="10 \u0905\u0902\u0915\u094b\u0902 \u0915\u093e \u092e\u094b\u092c\u093e\u0907\u0932"></div>
+      <div id="recaptcha-container" style="margin-bottom:10px"></div>
+      <div class="field" id="otp-section" style="display:none"><label>SMS me aaya OTP</label><input id="otp-code" type="tel" maxlength="6" placeholder="6 \u0905\u0902\u0915\u094b\u0902 \u0915\u093e OTP"></div>
+      <button class="btn btn-outline" id="otp-btn" onclick="handleOtpBtn()">\ud83d\udce9 OTP \u092d\u0947\u091c\u094b</button>
     </div>
   </div>`;
   document.body.appendChild(div.firstElementChild);
+};
+
+// ---------- Phone OTP login ----------
+window.handleOtpBtn = async () => {
+  const sect = document.getElementById('otp-section');
+  if (sect && sect.style.display === 'none') return window.sendOtp();
+  return window.verifyOtp();
+};
+
+window.sendOtp = async () => {
+  const phone = document.getElementById('otp-phone').value.trim();
+  if (!/^\d{10}$/.test(phone)) return alert('\u0938\u0939\u0940 10 \u0905\u0902\u0915\u094b\u0902 \u0915\u093e \u092e\u094b\u092c\u093e\u0907\u0932 \u0928\u0902\u092c\u0930 \u0921\u093e\u0932\u094b\u0964');
+  try {
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { size: 'normal' });
+      await window.recaptchaVerifier.render();
+    }
+    window.confirmationResult = await window.auth.signInWithPhoneNumber('+91' + phone, window.recaptchaVerifier);
+    document.getElementById('otp-section').style.display = '';
+    const b = document.getElementById('otp-btn');
+    b.textContent = '\u2705 OTP Verify \u0915\u0930\u094b'; b.className = 'btn btn-primary';
+    showToast('\ud83d\udce9 OTP SMS \u0938\u0947 \u092d\u0947\u091c\u093e \u0917\u092f\u093e');
+  } catch (e) {
+    alert('OTP \u0928\u0939\u0940\u0902 \u091c\u093e \u092a\u093e\u092f\u093e: ' + e.message);
+    if (window.recaptchaVerifier) {
+      try { window.recaptchaVerifier.clear(); } catch (_) {}
+      window.recaptchaVerifier = null;
+      const rc = document.getElementById('recaptcha-container'); if (rc) rc.innerHTML = '';
+    }
+  }
+};
+
+window.verifyOtp = async () => {
+  const code = document.getElementById('otp-code').value.trim();
+  if (code.length !== 6) return alert('6 \u0905\u0902\u0915\u094b\u0902 \u0915\u093e OTP \u0921\u093e\u0932\u094b\u0964');
+  try {
+    const cred = await window.confirmationResult.confirm(code);
+    const uref = window.db.ref('users/' + cred.user.uid);
+    const snap = await uref.once('value');
+    if (!snap.exists()) {
+      const name = document.getElementById('auth-name').value.trim();
+      const phone = document.getElementById('otp-phone').value.trim();
+      await uref.set({ name: name || 'User', phone, email: '', createdAt: Date.now(), blocked: false });
+    }
+    window.closeAuthModal();
+    showToast('\u2705 \u092e\u094b\u092c\u093e\u0907\u0932 \u0938\u0947 \u0932\u0949\u0917\u093f\u0928 \u0939\u094b \u0917\u092f\u093e!');
+  } catch (e) { alert('OTP \u0938\u0939\u0940 \u0928\u0939\u0940\u0902 \u0939\u0948: ' + e.message); }
 };
 
 // ---------- Photo compression (no Storage needed) ----------
@@ -187,9 +239,64 @@ window.openChatWithSeller = async (ad) => {
       lastMsg: '', lastTs: ts
     });
     const upd = {};
-    upd['userChats/' + buyer.uid + '/' + chatId] = { adId: ad.id, adTitle: ad.title || '', otherUid: ad.uid, otherName: ad.sellerName || 'Seller', lastMsg: '', lastTs: ts };
-    upd['userChats/' + ad.uid + '/' + chatId] = { adId: ad.id, adTitle: ad.title || '', otherUid: buyer.uid, otherName: myName, lastMsg: '', lastTs: ts };
+    upd['userChats/' + buyer.uid + '/' + chatId] = { adId: ad.id, adTitle: ad.title || '', otherUid: ad.uid, otherName: ad.sellerName || 'Seller', lastMsg: '', lastTs: ts, lastFrom: '' };
+    upd['userChats/' + ad.uid + '/' + chatId] = { adId: ad.id, adTitle: ad.title || '', otherUid: buyer.uid, otherName: myName, lastMsg: '', lastTs: ts, lastFrom: '' };
     await window.db.ref().update(upd);
   }
   location.href = 'chat.html?chat=' + encodeURIComponent(chatId);
+};
+
+// ---------- Chat notifications (foreground) ----------
+window.askNotifPermission = () => {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().catch(() => {});
+  }
+};
+
+window.watchChatNotifications = () => {
+  if (!window.currentUser || !window.FIREBASE_READY) return;
+  const uid = window.currentUser.uid;
+  const seenKey = 'bazario-chatseen-' + uid;
+  let lastSeen = Number(localStorage.getItem(seenKey) || 0);
+  let firstLoad = true;
+  window.db.ref('userChats/' + uid).on('value', (snap) => {
+    const val = snap.val() || {};
+    let newest = 0, newestChat = null;
+    Object.keys(val).forEach(id => {
+      const c = val[id];
+      if ((c.lastTs || 0) > newest) { newest = c.lastTs; newestChat = { id, ...c }; }
+    });
+    if (firstLoad) {
+      firstLoad = false;
+      if (newest > lastSeen) { lastSeen = newest; localStorage.setItem(seenKey, String(lastSeen)); }
+      return;
+    }
+    if (newestChat && newest > lastSeen) {
+      lastSeen = newest; localStorage.setItem(seenKey, String(lastSeen));
+      if (newestChat.lastFrom === uid) return;
+      const title = '\ud83d\udcac ' + (newestChat.otherName || 'Naya message');
+      const body = newestChat.lastMsg || 'Naya message aaya hai';
+      showToast(title + ': ' + body, 4200);
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try { new Notification(title, { body, icon: './icon-192.png' }); } catch (e) {}
+      }
+    }
+  });
+};
+
+// ---------- FCM token registration (admin broadcasts; dormant till VAPID key) ----------
+window.initFcm = async () => {
+  if (!window.FIREBASE_READY || !window.FCM_VAPID_KEY || !window.currentUser) return;
+  if (typeof firebase.messaging !== 'function' || !('serviceWorker' in navigator)) return;
+  try {
+    const messaging = firebase.messaging();
+    const reg = await navigator.serviceWorker.getRegistration();
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return;
+    const token = await messaging.getToken({ vapidKey: window.FCM_VAPID_KEY, serviceWorkerRegistration: reg });
+    if (token) {
+      const key = btoa(token).replace(/[^a-zA-Z0-9]/g, '').slice(-16);
+      await window.db.ref('users/' + window.currentUser.uid + '/fcmTokens/' + key).set(token);
+    }
+  } catch (e) { console.log('FCM skip:', e.message); }
 };

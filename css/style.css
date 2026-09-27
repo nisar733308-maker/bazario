@@ -145,3 +145,7 @@ button { font-family:inherit; }
 .msg-input-row input { flex:1; border:1.5px solid var(--line); border-radius:var(--radius-pill); padding:12px 16px; font-size:1rem; outline:none; font-family:inherit; min-width:0; }
 .msg-input-row input:focus { border-color:var(--teal-500); }
 .msg-input-row button { border:none; border-radius:50%; width:46px; height:46px; background:linear-gradient(135deg,var(--teal-500),var(--blue-600)); color:#fff; font-size:1.1rem; cursor:pointer; flex-shrink:0; }
+
+/* ---------- OTP divider ---------- */
+.otp-divider { display:flex; align-items:center; gap:10px; margin:18px 0 14px; color:var(--ink-soft); font-size:.75rem; font-weight:700; letter-spacing:1px; }
+.otp-divider::before, .otp-divider::after { content:''; flex:1; border-top:1px solid var(--line); }

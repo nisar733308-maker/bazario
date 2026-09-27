@@ -9,6 +9,7 @@ window.firebaseConfig = {
   appId: "1:275381335548:web:85319a7fd932036c18ee79"
 };
 
+window.FCM_VAPID_KEY = '';  // Web Push key yahan paste hogi jab user console se bhejega
 window.FIREBASE_READY = !String(window.firebaseConfig.apiKey).startsWith('PASTE');
 window.db = null;
 window.auth = null;
