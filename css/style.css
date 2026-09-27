@@ -153,3 +153,9 @@ button { font-family:inherit; }
 /* ---------- Notification enable banner ---------- */
 .notif-banner { margin:10px 14px 2px; padding:12px 14px; border-radius:var(--radius); background:linear-gradient(135deg,#0f766e,#1d4ed8); color:#fff; display:flex; align-items:center; justify-content:space-between; gap:10px; box-shadow:var(--shadow-lg); font-size:.88rem; font-weight:600; }
 .notif-banner button { flex-shrink:0; border:none; border-radius:var(--radius-pill); padding:9px 18px; font-size:.85rem; font-weight:800; cursor:pointer; background:var(--amber-400); color:#78350f; }
+
+/* ---------- Profile links ---------- */
+.profile-links { padding:6px 0; }
+.profile-link { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; text-decoration:none; color:var(--ink); font-weight:700; font-size:.95rem; border-bottom:1px solid var(--line); }
+.profile-link:last-child { border-bottom:none; }
+.profile-link span:last-child { color:var(--ink-soft); font-size:1.1rem; }

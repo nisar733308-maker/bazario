@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>मेरा अकाउंट - Bazario</title>
+<meta name="theme-color" content="#0d9488">
+<link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-row">
+    <div>
+      <div class="brand">Bazario<span>.</span></div>
+      <div class="brand-sub">👤 मेरा अकाउंट</div>
+    </div>
+    <button class="icon-btn" id="admin-btn" style="display:none" title="Admin Panel" onclick="location.href='admin.html'">🛡️</button>
+    <button class="icon-btn" onclick="location.href='index.html'">🏠</button>
+  </div>
+</header>
+
+<div class="page" id="page"><p class="empty-state">लोड हो रहा है...</p></div>
+
+<nav class="bottom-nav">
+  <a class="nav-item" href="index.html"><span class="ic">🏠</span>होम</a>
+  <a class="nav-item" href="chat.html"><span class="ic">💬</span>चैट</a>
+  <a class="nav-item nav-post" href="post.html"><span class="ic">＋</span>Ad डालो</a>
+  <a class="nav-item" href="myads.html"><span class="ic">📦</span>मेरे Ads</a>
+</nav>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
+<script src="./js/firebaseConfig.js"></script>
+<script src="./js/app.js"></script>
+<script>
+async function loadProfile() {
+  const page = document.getElementById('page');
+  if (!window.FIREBASE_READY) { page.innerHTML = ''; return; }
+  const u = window.currentUser;
+  if (!u) {
+    page.innerHTML = `<div class="empty-state"><div class="big">🔑</div>Apna account dekhne ke liye login karo।<br><br><button class="btn btn-primary" style="max-width:220px;margin:0 auto" onclick="openAuthModal()">लॉगिन / रजिस्टर</button></div>`;
+    return;
+  }
+  const p = window.userProfile || {};
+  const isAdmin = u.email === window.ADMIN_EMAIL;
+  let notifStatus = '❔ अज्ञात';
+  if ('Notification' in window) {
+    if (Notification.permission === 'granted') {
+      try {
+        const snap = await window.db.ref('users/' + u.uid + '/fcmTokens').limitToFirst(1).once('value');
+        notifStatus = snap.exists() ? '✅ चालू है' : '⚠️ Allow hai par token save nahi - dabao';
+      } catch (e) { notifStatus = '⚠️ जाँच नहीं हो पाई'; }
+    } else if (Notification.permission === 'denied') {
+      notifStatus = '❌ Block hai - phone settings se ON karo';
+    } else {
+      notifStatus = '🔕 बंद है';
+    }
+  } else {
+    notifStatus = '⚠️ Browser support nahi karta';
+  }
+  page.innerHTML = `
+    <div class="card" style="text-align:center;padding-top:22px">
+      <div class="seller-avatar" style="width:72px;height:72px;font-size:2rem;margin:0 auto 10px">${esc((p.name || u.email || 'U')[0].toUpperCase())}</div>
+      <div style="font-size:1.15rem;font-weight:800">${esc(p.name || 'User')}</div>
+      <div style="font-size:.85rem;color:var(--ink-soft);margin-top:4px">${esc(u.email || '')}${u.email && u.phoneNumber ? ' · ' : ''}${esc(u.phoneNumber || '')}</div>
+      ${isAdmin ? '<div style="margin-top:8px"><span class="badge" style="background:#fef3c7;color:#92400e">🛡️ Admin</span></div>' : ''}
+    </div>
+
+    <div class="card">
+      <div class="page-title" style="font-size:1rem;margin-bottom:10px">✏️ Profile बदलो</div>
+      <div class="field"><label>पूरा नाम</label><input id="pr-name" maxlength="40" value="${esc(p.name || '')}"></div>
+      <div class="field"><label>मोबाइल नंबर (ads me yehi dikhega)</label><input id="pr-phone" type="tel" maxlength="10" value="${esc(p.phone || (u.phoneNumber || '').replace('+91', ''))}"></div>
+      <button class="btn btn-primary" onclick="saveProfile()">💾 Save करो</button>
+    </div>
+
+    <div class="card profile-links">
+      <a class="profile-link" href="myads.html"><span>📦 मेरे Ads</span><span>›</span></a>
+      <a class="profile-link" href="myads.html#favs" onclick="sessionStorage.setItem('openFavs','1')"><span>❤️ पसंद के Ads</span><span>›</span></a>
+      <a class="profile-link" href="chat.html"><span>💬 मेरी चैट</span><span>›</span></a>
+      <a class="profile-link" href="post.html"><span>＋ नया Ad डालो</span><span>›</span></a>
+      ${isAdmin ? `<a class="profile-link" href="admin.html" style="color:#92400e"><span>🛡️ Admin Panel</span><span>›</span></a>` : ''}
+    </div>
+
+    <div class="card">
+      <div class="page-title" style="font-size:1rem;margin-bottom:6px">🔔 Notifications</div>
+      <div style="font-size:.9rem;color:var(--ink-soft);margin-bottom:10px">${notifStatus}</div>
+      ${notifStatus.startsWith('✅') ? '' : '<button class="btn btn-outline" onclick="enableNotifications()">🔔 Notification चालू करें</button>'}
+    </div>
+
+    <button class="btn btn-danger" style="margin-top:8px" onclick="logoutConfirm()">🚪 लॉगआउट</button>
+  `;
+}
+
+async function saveProfile() {
+  const u = window.currentUser;
+  if (!u) return;
+  const name = document.getElementById('pr-name').value.trim();
+  const phone = document.getElementById('pr-phone').value.trim();
+  if (!name) return alert('नाम खाली नहीं हो सकता।');
+  if (phone && !/^\d{10}$/.test(phone)) return alert('मोबाइल 10 अंकों का सही डालो।');
+  try {
+    await window.db.ref('users/' + u.uid).update({ name, phone });
+    window.userProfile = { ...(window.userProfile || {}), name, phone };
+    showToast('✅ Profile save ho gayi!');
+  } catch (e) { alert('Save nahi hui: ' + e.message); }
+}
+
+function logoutConfirm() {
+  if (confirm('Pakka logout karna hai?')) doLogout();
+}
+
+renderSetupBannerIfNeeded();
+injectAuthModal();
+initAuth((user) => {
+  var ab = document.getElementById('admin-btn'); if (ab) ab.style.display = (user && user.email === window.ADMIN_EMAIL) ? '' : 'none';
+  loadProfile();
+});
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+</script>
+</body>
+</html>

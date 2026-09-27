@@ -141,7 +141,11 @@ async function delAd(id) {
 
 renderSetupBannerIfNeeded();
 injectAuthModal();
-initAuth((user) => { var ab=document.getElementById('admin-btn'); if(ab) ab.style.display=(user && user.email===window.ADMIN_EMAIL)?'':'none'; showTab(activeTab); });
+initAuth((user) => {
+  var ab=document.getElementById('admin-btn'); if(ab) ab.style.display=(user && user.email===window.ADMIN_EMAIL)?'':'none';
+  if (sessionStorage.getItem('openFavs') === '1' || location.hash === '#favs') { sessionStorage.removeItem('openFavs'); activeTab = 'favs'; }
+  showTab(activeTab);
+});
 </script>
 </body>
 </html>

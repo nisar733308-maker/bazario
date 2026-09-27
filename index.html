@@ -58,7 +58,7 @@
 let allAds = [], activeCat = 'all', searchText = '', activeDistrict = '', favs = {};
 
 function onAuthBtn() {
-  if (window.currentUser) { if (confirm('लॉगआउट करना है?')) doLogout(); }
+  if (window.currentUser) location.href = 'profile.html';
   else openAuthModal();
 }
 
