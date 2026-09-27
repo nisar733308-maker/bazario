@@ -9,7 +9,7 @@ window.firebaseConfig = {
   appId: "1:275381335548:web:85319a7fd932036c18ee79"
 };
 
-window.FCM_VAPID_KEY = '';  // Web Push key yahan paste hogi jab user console se bhejega
+window.FCM_VAPID_KEY = 'BP1bJVp7hapW3xSBnthDEZwssPtbfR6yWiFer5sRKkUs3iPZ398Tf2AVZ9lRmkWhvpLbTeBsC2WKvekH6hUezcY';  // Web Push key (public, from user 8:13 PM)
 window.FIREBASE_READY = !String(window.firebaseConfig.apiKey).startsWith('PASTE');
 window.db = null;
 window.auth = null;
