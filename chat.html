@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>चैट - Bazario</title>
+<meta name="theme-color" content="#0d9488">
+<link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-row">
+    <div>
+      <div class="brand">Bazario<span>.</span></div>
+      <div class="brand-sub" id="chat-sub">💬 मेरी चैट</div>
+    </div>
+    <button class="icon-btn" id="admin-btn" style="display:none" title="Admin Panel" onclick="location.href='admin.html'">🛡️</button>
+    <button class="icon-btn" id="back-btn" onclick="goBack()">✕</button>
+  </div>
+</header>
+
+<div class="page" id="page"><p class="empty-state">लोड हो रहा है...</p></div>
+
+<div class="msg-input-row" id="msg-input-row" style="display:none">
+  <input id="msg-input" maxlength="500" placeholder="Message लिखो..." onkeydown="if(event.key==='Enter')sendMsg()">
+  <button onclick="sendMsg()">➤</button>
+</div>
+
+<nav class="bottom-nav">
+  <a class="nav-item" href="index.html"><span class="ic">🏠</span>होम</a>
+  <a class="nav-item active" href="chat.html"><span class="ic">💬</span>चैट</a>
+  <a class="nav-item nav-post" href="post.html"><span class="ic">＋</span>Ad डालो</a>
+  <a class="nav-item" href="myads.html"><span class="ic">📦</span>मेरे Ads</a>
+</nav>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="./js/firebaseConfig.js"></script>
+<script src="./js/app.js"></script>
+<script>
+const chatId = new URLSearchParams(location.search).get('chat');
+let chatMeta = null, msgsListener = null;
+
+function goBack() {
+  if (chatId) location.href = 'chat.html';
+  else location.href = 'index.html';
+}
+
+async function loadChatList() {
+  const page = document.getElementById('page');
+  document.getElementById('chat-sub').textContent = '💬 मेरी चैट';
+  if (!window.currentUser) {
+    page.innerHTML = `<div class="empty-state"><div class="big">💬</div>Buyers/sellers से बात करने के liye login karo।<br><br><button class="btn btn-primary" style="max-width:220px;margin:0 auto" onclick="openAuthModal()">लॉगिन / रजिस्टर</button></div>`;
+    return;
+  }
+  try {
+    const snap = await window.db.ref('userChats/' + window.currentUser.uid).once('value');
+    const val = snap.val() || {};
+    const list = Object.keys(val).map(id => ({ id, ...val[id] })).sort((a, b) => (b.lastTs || 0) - (a.lastTs || 0));
+    if (!list.length) {
+      page.innerHTML = `<div class="empty-state"><div class="big">💬</div>Abhi koi chat nahi।<br>Kisi Ad pe "App Chat" dabao aur seller से सीधे बात करो - number dene ki zaroorat nahi!</div>`;
+      return;
+    }
+    page.innerHTML = `<div class="page-title">मेरी चैट (${list.length})</div>` + list.map(c => `
+      <div class="card chat-row" onclick="location.href='chat.html?chat=${encodeURIComponent(c.id)}'">
+        <div class="chat-avatar">${esc((c.otherName || 'U')[0].toUpperCase())}</div>
+        <div class="my-ad-info">
+          <div style="font-weight:700">${esc(c.otherName || 'User')}</div>
+          <div style="font-size:.78rem;color:var(--teal-600);font-weight:600">${esc(c.adTitle || '')}</div>
+          <div style="font-size:.78rem;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.lastMsg || 'Chat shuru karo...')}</div>
+        </div>
+        <div style="font-size:.68rem;color:var(--ink-soft);flex-shrink:0">${c.lastTs ? timeAgo(c.lastTs) : ''}</div>
+      </div>`).join('');
+  } catch (e) {
+    page.innerHTML = '<div class="empty-state">⚠️ चैट लोड नहीं हुई।</div>';
+  }
+}
+
+async function openConversation() {
+  const page = document.getElementById('page');
+  try {
+    const snap = await window.db.ref('chats/' + chatId).once('value');
+    chatMeta = snap.val();
+  } catch (e) { chatMeta = null; }
+  if (!chatMeta || !chatMeta.members || !chatMeta.members[window.currentUser.uid]) {
+    page.innerHTML = '<div class="empty-state"><div class="big">⛔</div>Ye chat tumhare liye nahi hai।</div>';
+    return;
+  }
+  const otherUid = Object.keys(chatMeta.members).find(u => u !== window.currentUser.uid);
+  const otherName = (chatMeta.names && chatMeta.names[otherUid]) || 'User';
+  document.getElementById('chat-sub').textContent = '💬 ' + otherName;
+  page.innerHTML = `
+    <a class="back-link" href="chat.html">← सभी चैट</a>
+    <div class="card" style="padding:12px 16px;cursor:pointer" onclick="location.href='ad.html?id=${encodeURIComponent(chatMeta.adId)}'">
+      <div style="font-size:.72rem;color:var(--ink-soft)">इस Ad के बारे में बात हो रही है:</div>
+      <div style="font-weight:700;color:var(--teal-600)">${esc(chatMeta.adTitle || 'Ad')} →</div>
+    </div>
+    <div class="msg-list convo-list" id="msg-list"></div>`;
+  document.getElementById('msg-input-row').style.display = 'flex';
+  const list = document.getElementById('msg-list');
+  const msgsRef = window.db.ref('chats/' + chatId + '/msgs');
+  if (msgsListener) msgsRef.off('child_added', msgsListener);
+  msgsListener = msgsRef.limitToLast(100).on('child_added', (s) => {
+    const m = s.val(); if (!m) return;
+    const mine = m.from === window.currentUser.uid;
+    const div = document.createElement('div');
+    div.className = 'msg ' + (mine ? 'mine' : 'theirs');
+    div.innerHTML = esc(m.text || '') + '<div class="msg-time">' + (m.ts ? timeAgo(m.ts) : '') + '</div>';
+    list.appendChild(div);
+    window.scrollTo(0, document.body.scrollHeight);
+  });
+}
+
+async function sendMsg() {
+  const inp = document.getElementById('msg-input');
+  const text = inp.value.trim();
+  if (!text || !chatId || !chatMeta) return;
+  inp.value = '';
+  const ts = Date.now();
+  const short = text.slice(0, 80);
+  try {
+    await window.db.ref('chats/' + chatId + '/msgs').push({ from: window.currentUser.uid, text: text.slice(0, 500), ts });
+    const updates = {};
+    updates['chats/' + chatId + '/lastMsg'] = short;
+    updates['chats/' + chatId + '/lastTs'] = ts;
+    Object.keys(chatMeta.members).forEach(uid => {
+      updates['userChats/' + uid + '/' + chatId + '/lastMsg'] = short;
+      updates['userChats/' + uid + '/' + chatId + '/lastTs'] = ts;
+    });
+    await window.db.ref().update(updates);
+    document.getElementById('msg-input').focus();
+  } catch (e) {
+    showToast('⚠️ Message नहीं गया');
+    inp.value = text;
+  }
+}
+
+renderSetupBannerIfNeeded();
+injectAuthModal();
+initAuth((user) => {
+  var ab = document.getElementById('admin-btn'); if (ab) ab.style.display = (user && user.email === window.ADMIN_EMAIL) ? '' : 'none';
+  if (chatId) {
+    if (!user) {
+      document.getElementById('page').innerHTML = `<div class="empty-state"><div class="big">🔑</div>Chat kholne ke liye login karo।<br><br><button class="btn btn-primary" style="max-width:220px;margin:0 auto" onclick="openAuthModal()">लॉगिन / रजिस्टर</button></div>`;
+      return;
+    }
+    openConversation();
+  } else {
+    loadChatList();
+  }
+});
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+</script>
+</body>
+</html>

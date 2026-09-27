@@ -12,6 +12,30 @@
         ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'nisar733308@gmail.com')",
         ".write": "auth != null && (auth.uid === $uid || auth.token.email === 'nisar733308@gmail.com')"
       }
+    },
+    "chats": {
+      "$chatId": {
+        ".read": "auth != null && (auth.token.email === 'nisar733308@gmail.com' || data.child('members').child(auth.uid).exists() || newData.child('members').child(auth.uid).exists())",
+        ".write": "auth != null && (auth.token.email === 'nisar733308@gmail.com' || data.child('members').child(auth.uid).exists() || newData.child('members').child(auth.uid).exists())"
+      }
+    },
+    "userChats": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'nisar733308@gmail.com')",
+        ".indexOn": ["lastTs"],
+        "$chatId": {
+          ".write": "auth != null"
+        }
+      }
+    },
+    "reports": {
+      ".read": "auth != null && auth.token.email === 'nisar733308@gmail.com'",
+      ".write": "auth != null && auth.token.email === 'nisar733308@gmail.com'",
+      "$adId": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      }
     }
   }
 }

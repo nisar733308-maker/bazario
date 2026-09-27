@@ -29,11 +29,16 @@
   </div>
 </div>
 
+<div class="filter-row">
+  <select id="district-filter" onchange="setDistrict(this.value)"><option value="">📍 सभी ज़िले</option></select>
+</div>
+
 <div class="cats" id="cats"></div>
 <div class="ads-grid" id="ads-grid"><p class="empty-state" style="grid-column:1/-1">लोड हो रहा है...</p></div>
 
 <nav class="bottom-nav">
   <a class="nav-item active" href="index.html"><span class="ic">🏠</span>होम</a>
+  <a class="nav-item" href="chat.html"><span class="ic">💬</span>चैट</a>
   <a class="nav-item nav-post" href="post.html"><span class="ic">＋</span>Ad डालो</a>
   <a class="nav-item" href="myads.html"><span class="ic">📦</span>मेरे Ads</a>
 </nav>
@@ -44,7 +49,7 @@
 <script src="./js/firebaseConfig.js"></script>
 <script src="./js/app.js"></script>
 <script>
-let allAds = [], activeCat = 'all', searchText = '';
+let allAds = [], activeCat = 'all', searchText = '', activeDistrict = '', favs = {};
 
 function onAuthBtn() {
   if (window.currentUser) { if (confirm('लॉगआउट करना है?')) doLogout(); }
@@ -58,11 +63,27 @@ function renderCats() {
 }
 function setCat(id) { activeCat = id; renderCats(); renderAds(); }
 function onSearch(v) { searchText = v.trim().toLowerCase(); renderAds(); }
+function setDistrict(v) { activeDistrict = v; renderAds(); }
+
+function renderDistrictFilter() {
+  const sel = document.getElementById('district-filter');
+  const ds = [...new Set(allAds.map(a => a.district).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">📍 सभी ज़िले</option>' +
+    ds.map(d => `<option value="${esc(d)}" ${d === activeDistrict ? 'selected' : ''}>📍 ${esc(d)}</option>`).join('');
+}
+
+async function onFav(id) {
+  const res = await toggleFav(id);
+  if (res === null) return;
+  favs = await getFavs();
+  renderAds();
+}
 
 function renderAds() {
   const grid = document.getElementById('ads-grid');
   let list = allAds.filter(a => a.status === 'active');
   if (activeCat !== 'all') list = list.filter(a => a.category === activeCat);
+  if (activeDistrict) list = list.filter(a => a.district === activeDistrict);
   if (searchText) list = list.filter(a => (a.title + ' ' + (a.desc||'') + ' ' + (a.village||'') + ' ' + (a.district||'')).toLowerCase().includes(searchText));
   if (!list.length) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="big">🔍</div>कोई Ad नहीं मिला।<br>पहला Ad तुम डालो!</div>`;
@@ -70,7 +91,10 @@ function renderAds() {
   }
   grid.innerHTML = list.map(a => `
     <div class="ad-card" onclick="location.href='ad.html?id=${a.id}'">
-      ${a.photos && a.photos[0] ? `<img class="ad-photo" src="${a.photos[0]}" loading="lazy">` : `<div class="ad-photo-ph">${(window.CATEGORIES.find(c=>c.id===a.category)||{}).icon || '📦'}</div>`}
+      <div class="ad-photo-wrap">
+        ${a.photos && a.photos[0] ? `<img class="ad-photo" src="${a.photos[0]}" loading="lazy">` : `<div class="ad-photo-ph">${(window.CATEGORIES.find(c=>c.id===a.category)||{}).icon || '📦'}</div>`}
+        <button class="fav-btn" onclick="event.stopPropagation();onFav('${a.id}')" title="पसंद">${favs[a.id] ? '❤️' : '🤍'}</button>
+      </div>
       <div class="ad-body">
         <div class="ad-price">${fmtPrice(a.price)}</div>
         <div class="ad-title">${esc(a.title)}</div>
@@ -85,6 +109,7 @@ async function loadAds() {
     const snap = await window.db.ref('ads').orderByChild('createdAt').once('value');
     const val = snap.val() || {};
     allAds = Object.keys(val).map(id => ({ id, ...val[id] })).sort((a, b) => b.createdAt - a.createdAt);
+    renderDistrictFilter();
     renderAds();
   } catch (e) {
     document.getElementById('ads-grid').innerHTML = '<div class="empty-state" style="grid-column:1/-1">⚠️ Ads लोड नहीं हुए। इंटरनेट चेक करो।</div>';
@@ -94,9 +119,10 @@ async function loadAds() {
 renderCats();
 renderSetupBannerIfNeeded();
 injectAuthModal();
-initAuth((user) => {
+initAuth(async (user) => {
   document.getElementById('auth-btn').textContent = user ? '👤' : '🔑';
   var ab=document.getElementById('admin-btn'); if(ab) ab.style.display=(user && user.email===window.ADMIN_EMAIL)?'':'none';
+  if (user) { favs = await getFavs(); renderAds(); }
 });
 loadAds();
 

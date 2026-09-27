@@ -26,6 +26,8 @@
 <script src="./js/firebaseConfig.js"></script>
 <script src="./js/app.js"></script>
 <script>
+let adsById = {};
+
 async function loadAdmin() {
   const page = document.getElementById('page');
   if (!window.FIREBASE_READY) { page.innerHTML = ''; return; }
@@ -41,7 +43,41 @@ async function loadAdmin() {
     const snap = await window.db.ref('ads').orderByChild('createdAt').once('value');
     const val = snap.val() || {};
     const ads = Object.keys(val).map(id => ({ id, ...val[id] })).sort((a, b) => b.createdAt - a.createdAt);
-    page.innerHTML = `<div class="page-title">सभी Ads (${ads.length})</div>` + (ads.length ? ads.map(a => `
+    adsById = {};
+    ads.forEach(a => adsById[a.id] = a);
+
+    let html = '';
+
+    // ----- Reports section -----
+    let reports = {};
+    try { reports = (await window.db.ref('reports').once('value')).val() || {}; } catch (e) {}
+    const reportIds = Object.keys(reports);
+    html += `<div class="page-title">🚩 Reports (${reportIds.length})</div>`;
+    if (!reportIds.length) {
+      html += '<div class="card" style="color:var(--ink-soft);font-size:.9rem">Koi report nahi - sab badhiya ✅</div>';
+    } else {
+      html += reportIds.map(adId => {
+        const list = Object.keys(reports[adId]).map(uid => ({ uid, ...reports[adId][uid] })).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+        const ad = adsById[adId];
+        const title = ad ? ad.title : (list[0] && list[0].adTitle) || '(Ad delete ho chuka)';
+        return `
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+            <div style="font-weight:700">${ad ? `<a href="ad.html?id=${adId}" style="color:var(--teal-600);text-decoration:none">${esc(title)}</a>` : esc(title)}</div>
+            <span class="badge" style="background:#fee2e2;color:#b91c1c">${list.length} report${list.length > 1 ? 's' : ''}</span>
+          </div>
+          ${list.map(r => `<div style="font-size:.82rem;color:var(--ink-soft);margin-top:8px;border-left:3px solid #fecaca;padding-left:10px">"${esc(r.reason || '')}"<br><span style="font-size:.7rem">${esc(r.reporterEmail || '')} · ${r.ts ? timeAgo(r.ts) : ''}</span></div>`).join('')}
+          <div class="btn-row" style="margin-top:12px">
+            ${ad ? `<button class="btn btn-danger" style="padding:10px" onclick="adminDel('${adId}')">🗑️ Ad हटाओ</button>` : ''}
+            <button class="btn btn-outline" style="padding:10px" onclick="dismissReports('${adId}')">✖️ Reports हटाओ</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ----- All ads section -----
+    html += `<div class="page-title" style="margin-top:8px">सभी Ads (${ads.length})</div>`;
+    html += ads.length ? ads.map(a => `
       <div class="card my-ad-row">
         ${a.photos && a.photos[0] ? `<img src="${a.photos[0]}">` : `<div style="width:64px;height:64px;border-radius:12px;background:#e0f2f1;display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0">📦</div>`}
         <div class="my-ad-info">
@@ -52,7 +88,9 @@ async function loadAdmin() {
         <div class="my-ad-actions">
           <button class="small-btn red" onclick="adminDel('${a.id}')">🗑️</button>
         </div>
-      </div>`).join('') : '<div class="empty-state">Koi Ad nahi।</div>');
+      </div>`).join('') : '<div class="empty-state">Koi Ad nahi।</div>';
+
+    page.innerHTML = html;
   } catch (e) {
     page.innerHTML = '<div class="empty-state">⚠️ लोड नहीं हुआ: ' + esc(e.message) + '</div>';
   }
@@ -61,7 +99,15 @@ async function loadAdmin() {
 async function adminDel(id) {
   if (!confirm('Ye Ad delete karein?')) return;
   await window.db.ref('ads/' + id).remove();
+  try { await window.db.ref('reports/' + id).remove(); } catch (e) {}
   showToast('🗑️ Deleted');
+  loadAdmin();
+}
+
+async function dismissReports(adId) {
+  if (!confirm('Is Ad ki saari reports हटा दें? (Ad rahega)')) return;
+  await window.db.ref('reports/' + adId).remove();
+  showToast('Reports हटा दीं');
   loadAdmin();
 }
 

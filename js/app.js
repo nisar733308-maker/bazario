@@ -146,3 +146,50 @@ window.timeAgo = (ts) => {
   return Math.floor(s / 86400) + ' दिन पहले';
 };
 window.esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// ---------- Favorites ----------
+window.getFavs = async () => {
+  if (!window.currentUser) return {};
+  try {
+    const snap = await window.db.ref('users/' + window.currentUser.uid + '/favorites').once('value');
+    return snap.val() || {};
+  } catch (e) { return {}; }
+};
+
+window.toggleFav = async (adId) => {
+  if (!window.currentUser) { openAuthModal(); showToast('पसंद के liye पहले लॉगिन करो'); return null; }
+  const ref = window.db.ref('users/' + window.currentUser.uid + '/favorites/' + adId);
+  try {
+    const snap = await ref.once('value');
+    if (snap.exists()) { await ref.remove(); return false; }
+    await ref.set(Date.now());
+    return true;
+  } catch (e) { showToast('⚠️ कुछ गड़बड़ हुई'); return null; }
+};
+
+// ---------- Chat ----------
+window.openChatWithSeller = async (ad) => {
+  if (!window.currentUser) { openAuthModal(); showToast('Chat के liye पहले लॉगिन करो'); return; }
+  if (window.currentUser.uid === ad.uid) return;
+  const buyer = window.currentUser;
+  const myName = (window.userProfile && window.userProfile.name) || 'Buyer';
+  const chatId = ad.id + '_' + buyer.uid;
+  const ref = window.db.ref('chats/' + chatId);
+  let exists = false;
+  try { exists = (await ref.once('value')).exists(); } catch (e) { exists = false; }
+  if (!exists) {
+    const ts = Date.now();
+    await ref.set({
+      adId: ad.id,
+      adTitle: ad.title || '',
+      members: { [buyer.uid]: true, [ad.uid]: true },
+      names: { [buyer.uid]: myName, [ad.uid]: ad.sellerName || 'Seller' },
+      lastMsg: '', lastTs: ts
+    });
+    const upd = {};
+    upd['userChats/' + buyer.uid + '/' + chatId] = { adId: ad.id, adTitle: ad.title || '', otherUid: ad.uid, otherName: ad.sellerName || 'Seller', lastMsg: '', lastTs: ts };
+    upd['userChats/' + ad.uid + '/' + chatId] = { adId: ad.id, adTitle: ad.title || '', otherUid: buyer.uid, otherName: myName, lastMsg: '', lastTs: ts };
+    await window.db.ref().update(upd);
+  }
+  location.href = 'chat.html?chat=' + encodeURIComponent(chatId);
+};
