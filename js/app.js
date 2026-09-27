@@ -293,6 +293,10 @@ window.initFcm = async () => {
     const reg = await navigator.serviceWorker.getRegistration();
     const perm = await Notification.requestPermission();
     if (perm !== 'granted') return;
+    messaging.onMessage((payload) => {
+      const n = (payload && payload.notification) || {};
+      showToast('\ud83d\udd14 ' + (n.title || 'Bazario') + ': ' + (n.body || ''), 4500);
+    });
     const token = await messaging.getToken({ vapidKey: window.FCM_VAPID_KEY, serviceWorkerRegistration: reg });
     if (token) {
       const key = btoa(token).replace(/[^a-zA-Z0-9]/g, '').slice(-16);
