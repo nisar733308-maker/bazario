@@ -132,7 +132,7 @@ window.sendOtp = async () => {
   if (!/^\d{10}$/.test(phone)) return alert('\u0938\u0939\u0940 10 \u0905\u0902\u0915\u094b\u0902 \u0915\u093e \u092e\u094b\u092c\u093e\u0907\u0932 \u0928\u0902\u092c\u0930 \u0921\u093e\u0932\u094b\u0964');
   try {
     if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { size: 'normal' });
+      window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { size: 'invisible' });
       await window.recaptchaVerifier.render();
     }
     window.confirmationResult = await window.auth.signInWithPhoneNumber('+91' + phone, window.recaptchaVerifier);
