@@ -149,3 +149,7 @@ button { font-family:inherit; }
 /* ---------- OTP divider ---------- */
 .otp-divider { display:flex; align-items:center; gap:10px; margin:18px 0 14px; color:var(--ink-soft); font-size:.75rem; font-weight:700; letter-spacing:1px; }
 .otp-divider::before, .otp-divider::after { content:''; flex:1; border-top:1px solid var(--line); }
+
+/* ---------- Notification enable banner ---------- */
+.notif-banner { margin:10px 14px 2px; padding:12px 14px; border-radius:var(--radius); background:linear-gradient(135deg,#0f766e,#1d4ed8); color:#fff; display:flex; align-items:center; justify-content:space-between; gap:10px; box-shadow:var(--shadow-lg); font-size:.88rem; font-weight:600; }
+.notif-banner button { flex-shrink:0; border:none; border-radius:var(--radius-pill); padding:9px 18px; font-size:.85rem; font-weight:800; cursor:pointer; background:var(--amber-400); color:#78350f; }

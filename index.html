@@ -29,6 +29,11 @@
   </div>
 </div>
 
+<div class="notif-banner" id="notif-banner" style="display:none">
+  <span>🔔 Naye message aur offers ki notification paao</span>
+  <button onclick="enableNotifications()">चालू करें</button>
+</div>
+
 <div class="filter-row">
   <select id="district-filter" onchange="setDistrict(this.value)"><option value="">📍 सभी ज़िले</option></select>
 </div>
@@ -117,6 +122,18 @@ async function loadAds() {
   }
 }
 
+async function checkNotifBanner() {
+  const b = document.getElementById('notif-banner');
+  if (!b || !window.currentUser || !('Notification' in window)) return;
+  try {
+    if (Notification.permission === 'granted') {
+      const snap = await window.db.ref('users/' + window.currentUser.uid + '/fcmTokens').once('value');
+      if (snap.exists()) { b.style.display = 'none'; return; }
+    }
+    b.style.display = 'flex';
+  } catch (e) { b.style.display = 'flex'; }
+}
+
 renderCats();
 renderSetupBannerIfNeeded();
 injectAuthModal();
@@ -125,9 +142,10 @@ initAuth(async (user) => {
   var ab=document.getElementById('admin-btn'); if(ab) ab.style.display=(user && user.email===window.ADMIN_EMAIL)?'':'none';
   if (user) {
     favs = await getFavs(); renderAds();
-    askNotifPermission();
     watchChatNotifications();
-    initFcm();
+    checkNotifBanner();
+  } else {
+    var nb = document.getElementById('notif-banner'); if (nb) nb.style.display = 'none';
   }
 });
 loadAds();

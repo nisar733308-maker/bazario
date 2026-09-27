@@ -304,3 +304,31 @@ window.initFcm = async () => {
     }
   } catch (e) { console.log('FCM skip:', e.message); }
 };
+
+// ---------- Notification enable banner (user-tapped, reliable prompt) ----------
+window.enableNotifications = async () => {
+  if (!window.FIREBASE_READY) return showToast('\u26a0\ufe0f Internet check karo');
+  if (!window.currentUser) { openAuthModal(); return showToast('\u092a\u0939\u0932\u0947 \u0932\u0949\u0917\u093f\u0928 \u0915\u0930\u094b'); }
+  if (!('Notification' in window)) return showToast('\u26a0\ufe0f Ye browser notification support nahi karta', 4000);
+  const b = document.getElementById('notif-banner');
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      return showToast('\u274c Permission nahi mili. Phone Settings > Apps > Bazario/Chrome > Notifications ON karo, phir dobara try karo', 6000);
+    }
+    if (typeof firebase.messaging !== 'function' || !window.FCM_VAPID_KEY) {
+      return showToast('\u26a0\ufe0f Notification setup adhoora hai - app refresh karke dobara try karo', 5000);
+    }
+    showToast('\u23f3 Notification chalu ho rahi hai...', 2000);
+    const messaging = firebase.messaging();
+    const reg = await navigator.serviceWorker.getRegistration();
+    const token = await messaging.getToken({ vapidKey: window.FCM_VAPID_KEY, serviceWorkerRegistration: reg });
+    if (!token) return showToast('\u26a0\ufe0f Token nahi ban paya - refresh karke try karo', 5000);
+    const key = btoa(token).replace(/[^a-zA-Z0-9]/g, '').slice(-16);
+    await window.db.ref('users/' + window.currentUser.uid + '/fcmTokens/' + key).set(token);
+    if (b) b.style.display = 'none';
+    showToast('\u2705 Notification ON! Ab sab updates pahunchenge.', 4500);
+  } catch (e) {
+    showToast('\u26a0\ufe0f Notification setup fail: ' + e.message, 6000);
+  }
+};
