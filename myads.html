@@ -14,6 +14,7 @@
       <div class="brand">Bazario<span>.</span></div>
       <div class="brand-sub">मेरे Ads</div>
     </div>
+    <button class="icon-btn" id="admin-btn" style="display:none" title="Admin Panel" onclick="location.href='admin.html'">🛡️</button>
     <button class="icon-btn" onclick="location.href='index.html'">🏠</button>
   </div>
 </header>
@@ -78,7 +79,7 @@ async function delAd(id) {
 
 renderSetupBannerIfNeeded();
 injectAuthModal();
-initAuth(() => loadMyAds());
+initAuth((user) => { var ab=document.getElementById('admin-btn'); if(ab) ab.style.display=(user && user.email===window.ADMIN_EMAIL)?'':'none'; loadMyAds(); });
 </script>
 </body>
 </html>

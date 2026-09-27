@@ -14,6 +14,7 @@
       <div class="brand">Bazario<span>.</span></div>
       <div class="brand-sub">नया Ad डालो</div>
     </div>
+    <button class="icon-btn" id="admin-btn" style="display:none" title="Admin Panel" onclick="location.href='admin.html'">🛡️</button>
     <button class="icon-btn" onclick="history.back()">✕</button>
   </div>
 </header>
@@ -104,6 +105,7 @@ async function submitAd() {
 renderSetupBannerIfNeeded();
 injectAuthModal();
 initAuth((user) => {
+  var ab=document.getElementById('admin-btn'); if(ab) ab.style.display=(user && user.email===window.ADMIN_EMAIL)?'':'none';
   if (user && window.userProfile && window.userProfile.phone && !document.getElementById('p-phone').value) {
     document.getElementById('p-phone').value = window.userProfile.phone;
   }

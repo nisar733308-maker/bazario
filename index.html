@@ -17,6 +17,7 @@
       <div class="brand">Bazario<span>.</span></div>
       <div class="brand-sub">अपने इलाके का बाज़ार</div>
     </div>
+    <button class="icon-btn" id="admin-btn" style="display:none" title="Admin Panel" onclick="location.href='admin.html'">🛡️</button>
     <button class="icon-btn" id="auth-btn" onclick="onAuthBtn()">🔑</button>
   </div>
 </header>
@@ -95,6 +96,7 @@ renderSetupBannerIfNeeded();
 injectAuthModal();
 initAuth((user) => {
   document.getElementById('auth-btn').textContent = user ? '👤' : '🔑';
+  var ab=document.getElementById('admin-btn'); if(ab) ab.style.display=(user && user.email===window.ADMIN_EMAIL)?'':'none';
 });
 loadAds();
 

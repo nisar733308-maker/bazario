@@ -14,6 +14,7 @@
       <div class="brand">Bazario<span>.</span></div>
       <div class="brand-sub">Ad details</div>
     </div>
+    <button class="icon-btn" id="admin-btn" style="display:none" title="Admin Panel" onclick="location.href='admin.html'">🛡️</button>
     <button class="icon-btn" onclick="history.back()">✕</button>
   </div>
 </header>
@@ -83,7 +84,7 @@ async function markSold() {
 
 renderSetupBannerIfNeeded();
 injectAuthModal();
-initAuth(() => loadAd());
+initAuth((user) => { var ab=document.getElementById('admin-btn'); if(ab) ab.style.display=(user && user.email===window.ADMIN_EMAIL)?'':'none'; loadAd(); });
 </script>
 </body>
 </html>
