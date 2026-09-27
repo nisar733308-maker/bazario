@@ -114,6 +114,7 @@ window.injectAuthModal = () => {
       <div class="field"><label>\ud83d\udcf1 \u092e\u094b\u092c\u093e\u0907\u0932 \u0938\u0947 \u0932\u0949\u0917\u093f\u0928 (OTP)</label><input id="otp-phone" type="tel" maxlength="10" placeholder="10 \u0905\u0902\u0915\u094b\u0902 \u0915\u093e \u092e\u094b\u092c\u093e\u0907\u0932"></div>
       <div id="recaptcha-container" style="margin-bottom:10px"></div>
       <div class="field" id="otp-section" style="display:none"><label>SMS me aaya OTP</label><input id="otp-code" type="tel" maxlength="6" placeholder="6 \u0905\u0902\u0915\u094b\u0902 \u0915\u093e OTP"></div>
+      <div id="otp-resend" style="display:none;text-align:center;margin:-6px 0 10px"><span class="report-link" onclick="resendOtp()">\ud83d\udd04 OTP \u0928\u0939\u0940\u0902 \u0906\u092f\u093e? \u0926\u094b\u092c\u093e\u0930\u093e \u092d\u0947\u091c\u094b</span></div>
       <button class="btn btn-outline" id="otp-btn" onclick="handleOtpBtn()">\ud83d\udce9 OTP \u092d\u0947\u091c\u094b</button>
     </div>
   </div>`;
@@ -127,44 +128,82 @@ window.handleOtpBtn = async () => {
   return window.verifyOtp();
 };
 
-window.sendOtp = async () => {
-  const phone = document.getElementById('otp-phone').value.trim();
+window._resetRecaptcha = () => {
+  if (window.recaptchaVerifier) {
+    try { window.recaptchaVerifier.clear(); } catch (_) {}
+    window.recaptchaVerifier = null;
+  }
+  const rc = document.getElementById('recaptcha-container');
+  if (rc) rc.innerHTML = '';
+};
+
+window.sendOtp = async (useVisible) => {
+  let phone = document.getElementById('otp-phone').value.replace(/\D/g, '');
+  if (phone.length === 11 && phone.startsWith('0')) phone = phone.slice(1);
   if (!/^\d{10}$/.test(phone)) return alert('\u0938\u0939\u0940 10 \u0905\u0902\u0915\u094b\u0902 \u0915\u093e \u092e\u094b\u092c\u093e\u0907\u0932 \u0928\u0902\u092c\u0930 \u0921\u093e\u0932\u094b\u0964');
+  const btn = document.getElementById('otp-btn');
+  btn.disabled = true; btn.textContent = '\u23f3 \u092d\u0947\u091c\u093e \u091c\u093e \u0930\u0939\u093e \u0939\u0948...';
   try {
     if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { size: 'invisible' });
+      window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { size: useVisible ? 'normal' : 'invisible' });
       await window.recaptchaVerifier.render();
     }
     window.confirmationResult = await window.auth.signInWithPhoneNumber('+91' + phone, window.recaptchaVerifier);
     document.getElementById('otp-section').style.display = '';
-    const b = document.getElementById('otp-btn');
-    b.textContent = '\u2705 OTP Verify \u0915\u0930\u094b'; b.className = 'btn btn-primary';
-    showToast('\ud83d\udce9 OTP SMS \u0938\u0947 \u092d\u0947\u091c\u093e \u0917\u092f\u093e');
+    const rs = document.getElementById('otp-resend'); if (rs) rs.style.display = '';
+    btn.disabled = false;
+    btn.textContent = '\u2705 OTP Verify \u0915\u0930\u094b'; btn.className = 'btn btn-primary';
+    showToast('\ud83d\udce9 OTP SMS \u0938\u0947 \u092d\u0947\u091c\u093e \u0917\u092f\u093e - 1-2 \u092e\u093f\u0928\u091f \u092e\u0947\u0902 \u0906\u090f\u0917\u093e', 3500);
   } catch (e) {
-    alert('OTP \u0928\u0939\u0940\u0902 \u091c\u093e \u092a\u093e\u092f\u093e: ' + e.message);
-    if (window.recaptchaVerifier) {
-      try { window.recaptchaVerifier.clear(); } catch (_) {}
-      window.recaptchaVerifier = null;
-      const rc = document.getElementById('recaptcha-container'); if (rc) rc.innerHTML = '';
+    const code = e.code || '';
+    window._resetRecaptcha();
+    btn.disabled = false; btn.textContent = '\ud83d\udce9 OTP \u092d\u0947\u091c\u094b';
+    if (/captcha|app-credential|network-request-failed/i.test(code) && !useVisible) {
+      showToast('\ud83e\udd16 Neeche "I\'m not a robot" tick karo, phir OTP \u092d\u0947\u091c\u094b dabao', 6000);
+      return window.sendOtp(true);
+    }
+    if (/quota-exceeded|too-many-requests/i.test(code)) {
+      alert('Aaj ki free SMS limit (10) khatam ho gayi hai. Kal try karo, ya abhi email + password se login kar lo.');
+    } else if (/invalid-phone-number/i.test(code)) {
+      alert('Number sahi nahi lag raha. Bina +91/0 ke sirf 10 ank daalo.');
+    } else {
+      alert('OTP nahi ja paya (' + code + '): ' + e.message + '\n\nInternet check karke dobara try karo. Baar-baar na chale to email + password se login ho jata hai.');
     }
   }
+};
+
+window.resendOtp = () => {
+  window._resetRecaptcha();
+  const sect = document.getElementById('otp-section'); if (sect) sect.style.display = 'none';
+  const rs = document.getElementById('otp-resend'); if (rs) rs.style.display = 'none';
+  const btn = document.getElementById('otp-btn');
+  btn.className = 'btn btn-outline';
+  window.sendOtp(true);
 };
 
 window.verifyOtp = async () => {
   const code = document.getElementById('otp-code').value.trim();
   if (code.length !== 6) return alert('6 \u0905\u0902\u0915\u094b\u0902 \u0915\u093e OTP \u0921\u093e\u0932\u094b\u0964');
+  const btn = document.getElementById('otp-btn');
+  btn.disabled = true; btn.textContent = '\u23f3 Check ho raha hai...';
   try {
     const cred = await window.confirmationResult.confirm(code);
     const uref = window.db.ref('users/' + cred.user.uid);
     const snap = await uref.once('value');
     if (!snap.exists()) {
       const name = document.getElementById('auth-name').value.trim();
-      const phone = document.getElementById('otp-phone').value.trim();
+      const phone = document.getElementById('otp-phone').value.replace(/\D/g, '').slice(-10);
       await uref.set({ name: name || 'User', phone, email: '', createdAt: Date.now(), blocked: false });
     }
     window.closeAuthModal();
     showToast('\u2705 \u092e\u094b\u092c\u093e\u0907\u0932 \u0938\u0947 \u0932\u0949\u0917\u093f\u0928 \u0939\u094b \u0917\u092f\u093e!');
-  } catch (e) { alert('OTP \u0938\u0939\u0940 \u0928\u0939\u0940\u0902 \u0939\u0948: ' + e.message); }
+  } catch (e) {
+    btn.disabled = false; btn.textContent = '\u2705 OTP Verify \u0915\u0930\u094b';
+    const code2 = e.code || '';
+    if (/invalid-verification-code/i.test(code2)) alert('OTP galat hai. SMS wala 6 ank dhyan se daalo.');
+    else if (/code-expired/i.test(code2)) alert('OTP expire ho gaya. "OTP दोबारा भेजो" dabao.');
+    else alert('Verify nahi hua (' + code2 + '): ' + e.message);
+  }
 };
 
 // ---------- Photo compression (no Storage needed) ----------
