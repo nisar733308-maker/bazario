@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bazario-v1';
+const CACHE_NAME = 'bazario-v2';
 const STATIC_CACHE = [
   './', './index.html', './post.html', './ad.html', './myads.html', './admin.html',
   './css/style.css', './js/app.js', './js/firebaseConfig.js', './manifest.json',
