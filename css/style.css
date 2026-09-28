@@ -15,6 +15,11 @@
   --shadow-lg: 0 10px 30px rgba(2,6,23,.16);
 }
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+/* Pin root size so Android system font/display scaling cannot inflate the whole UI;
+   rem-based design then scales down gently on narrow phones. */
+html { font-size:16px; -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+@media (max-width:400px) { html { font-size:15px; } }
+@media (max-width:340px) { html { font-size:14px; } }
 body { font-family: 'Segoe UI', Roboto, system-ui, sans-serif; background:#f1f5f9; color:var(--ink); min-height:100vh; padding-bottom:76px; }
 img { max-width:100%; display:block; }
 button { font-family:inherit; }
