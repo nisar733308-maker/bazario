@@ -20,3 +20,14 @@ Photos abhi database me compressed base64 me save hote hain (koi paid Storage na
 
 ## Tech
 Plain HTML/CSS/JS + Firebase (Auth + Realtime Database), GitHub Pages hosting, PWA installable.
+
+## Local district choices
+The district dropdown ships an offline list adapted from the third-party
+[KTBsomen/Indian-state-district-json](https://github.com/KTBsomen/Indian-state-district-json)
+under its MIT license (`data/DISTRICTS-LICENSE.txt`). It is **not verified as an official or
+fully current government list**. Maharajganj's spelling was checked against its district
+website, https://maharajganj.nic.in/, on 28 September 2026. Review/correct the rest
+before relying on the list for nationwide onboarding. Old ad district text is retained
+and old Maharajganj/Mahrajganj spellings are treated as one in the home filter.
+
+This preview is on a separate branch; merge only after owner reviews screenshots.

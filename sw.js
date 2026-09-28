@@ -27,10 +27,10 @@ self.addEventListener('notificationclick', (e) => {
   }));
 });
 
-const CACHE_NAME = 'bazario-v14';
+const CACHE_NAME = 'bazario-v15';
 const STATIC_CACHE = [
   './', './index.html', './post.html', './ad.html', './myads.html', './admin.html', './chat.html', './profile.html',
-  './css/style.css', './js/app.js', './js/firebaseConfig.js', './manifest.json',
+  './css/style.css', './js/app.js', './js/districts.js', './js/firebaseConfig.js', './manifest.json',
   './icon-192.png', './icon-512.png'
 ];
 self.addEventListener('install', e => e.waitUntil(

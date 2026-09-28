@@ -70,9 +70,10 @@ async function loadMyAds() {
         <div class="my-ad-info" onclick="location.href='ad.html?id=${a.id}'" style="cursor:pointer">
           <div style="font-weight:700">${esc(a.title)}</div>
           <div style="color:var(--teal-600);font-weight:800">${fmtPrice(a.price)}</div>
-          <div style="font-size:.72rem;color:var(--ink-soft)">${a.status === 'active' ? '🟢 Live' : '⚫ ' + a.status} · ${timeAgo(a.createdAt)}</div>
+          <div style="font-size:.72rem;color:var(--ink-soft)">${a.status === 'active' ? '🟢 Live' : a.status === 'sold' ? '✅ Bik gaya' : a.status === 'expired' ? '⌛ Muddat khatm' : '⏸️ Band'} · ${timeAgo(a.createdAt)}</div>
         </div>
         <div class="my-ad-actions">
+          <a class="small-btn" href="post.html?edit=${encodeURIComponent(a.id)}" aria-label="Ad badlo">✏️</a>
           <button class="small-btn" onclick="toggleStatus('${a.id}','${a.status}')">${a.status === 'active' ? '⏸️' : '▶️'}</button>
           <button class="small-btn red" onclick="delAd('${a.id}')">🗑️</button>
         </div>
@@ -129,11 +130,17 @@ async function unFav(adId) {
 }
 
 async function toggleStatus(id, status) {
-  await window.db.ref('ads/' + id).update({ status: status === 'active' ? 'paused' : 'active' });
+  if (!window.currentUser) return;
+  const ref = window.db.ref('ads/' + id);
+  const current = (await ref.once('value')).val();
+  if (!current || current.uid !== window.currentUser.uid) return;
+  await ref.update({ status: current.status === 'active' ? 'paused' : 'active' });
   loadMyAds();
 }
 async function delAd(id) {
   if (!confirm('Pakka delete karein?')) return;
+  const a = (await window.db.ref('ads/' + id).once('value')).val();
+  if (!window.currentUser || !a || a.uid !== window.currentUser.uid) return;
   await window.db.ref('ads/' + id).remove();
   showToast('🗑️ Ad delete ho gaya');
   loadMyAds();

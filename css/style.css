@@ -164,3 +164,17 @@ button { font-family:inherit; }
 .profile-link { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; text-decoration:none; color:var(--ink); font-weight:700; font-size:.95rem; border-bottom:1px solid var(--line); }
 .profile-link:last-child { border-bottom:none; }
 .profile-link span:last-child { color:var(--ink-soft); font-size:1.1rem; }
+/* Editing, safety and small-screen refinements */
+.safety-note { padding:12px 14px; border-radius:12px; background:#fffbeb; color:#78350f; border:1px solid #fcd34d; font-size:.84rem; line-height:1.5; margin-bottom:14px; }
+.field[hidden] { display:none; }
+.my-ad-actions { flex-wrap:wrap; justify-content:flex-end; max-width:120px; }
+.my-ad-actions a.small-btn { text-decoration:none; }
+@media (max-width:390px) {
+  .page .btn-row { flex-wrap:wrap; }
+  .page .btn-row .field { flex:1 1 100% !important; }
+  .my-ad-row { align-items:flex-start; }
+  .my-ad-actions { max-width:75px; }
+}
+
+.page .btn-row:has(.field) { flex-wrap:wrap; }
+.page .btn-row .field { min-width:175px; }

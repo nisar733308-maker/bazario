@@ -71,9 +71,10 @@ function setCat(id) { activeCat = id; renderCats(); renderAds(); }
 function onSearch(v) { searchText = v.trim().toLowerCase(); renderAds(); }
 function setDistrict(v) { activeDistrict = v; renderAds(); }
 
+function districtKey(value) { return String(value || '').toLowerCase().replace(/[^a-z]/g,'').replace(/^maharajganj$/, 'mahrajganj'); }
 function renderDistrictFilter() {
   const sel = document.getElementById('district-filter');
-  const ds = [...new Set(allAds.map(a => a.district).filter(Boolean))].sort();
+  const ds = [...new Map(allAds.filter(a => a.status === 'active' && a.district).map(a => [districtKey(a.district), a.district])).values()].sort();
   sel.innerHTML = '<option value="">📍 सभी ज़िले</option>' +
     ds.map(d => `<option value="${esc(d)}" ${d === activeDistrict ? 'selected' : ''}>📍 ${esc(d)}</option>`).join('');
 }
@@ -89,10 +90,10 @@ function renderAds() {
   const grid = document.getElementById('ads-grid');
   let list = allAds.filter(a => a.status === 'active');
   if (activeCat !== 'all') list = list.filter(a => a.category === activeCat);
-  if (activeDistrict) list = list.filter(a => a.district === activeDistrict);
+  if (activeDistrict) list = list.filter(a => districtKey(a.district) === districtKey(activeDistrict));
   if (searchText) list = list.filter(a => (a.title + ' ' + (a.desc||'') + ' ' + (a.village||'') + ' ' + (a.district||'')).toLowerCase().includes(searchText));
   if (!list.length) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="big">🔍</div>कोई Ad नहीं मिला।<br>पहला Ad तुम डालो!</div>`;
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="big">🔍</div>${allAds.some(a => a.status === 'active') ? 'Is filter mein koi Ad nahi mila।' : 'Abhi yahan koi Ad nahi hai।'}<br><br><a class="btn btn-primary" style="max-width:240px;margin:0 auto 10px" href="post.html">＋ Apna Ad daalo</a><button class="btn btn-outline" style="max-width:240px;margin:0 auto" onclick="shareBazario()">🔗 Doston ko link bhejo</button></div>`;
     return;
   }
   grid.innerHTML = list.map(a => `
@@ -109,6 +110,12 @@ function renderAds() {
     </div>`).join('');
 }
 
+async function shareBazario() {
+  const url = location.origin + location.pathname.replace(/[^/]*$/, '');
+  if (navigator.share) { try { await navigator.share({ title:'Bazario', url }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(url); showToast('🔗 Link copy ho gaya'); }
+  catch (e) { prompt('Bazario link copy karo:', url); }
+}
 async function loadAds() {
   if (!window.FIREBASE_READY) { document.getElementById('ads-grid').innerHTML = ''; return; }
   try {

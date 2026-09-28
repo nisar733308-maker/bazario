@@ -50,11 +50,15 @@ async function onDetailFav() {
 async function reportAd() {
   if (!window.currentUser) { openAuthModal(); return showToast('Report ke liye पहले लॉगिन करो'); }
   if (window.currentUser.uid === AD.uid) return showToast('Ye tumhara khud ka Ad hai');
-  const reason = prompt('Is Ad me kya problem hai?\n(जैसे: fraud/धोखा, गलत जानकारी, अश्लील, सामान नहीं मिला)');
-  if (!reason || !reason.trim()) return;
+  const kind = prompt('Report ka reason chuno: 1 Fraud/scam, 2 Galat jankari, 3 Duplicate/spam, 4 Galat/unsafe content. Number likho:');
+  if (!kind) return;
+  const reasons = {'1':'Fraud/scam','2':'Galat jankari','3':'Duplicate/spam','4':'Galat/unsafe content'};
+  if (!reasons[kind.trim()]) return alert('1 se 4 ke beech number chuno.');
+  const details = prompt('Kya hua? (optional, 200 akshar tak)') || '';
+  if (!confirm('Report bhejein? ' + reasons[kind.trim()])) return;
   try {
     await window.db.ref('reports/' + id + '/' + window.currentUser.uid).set({
-      reason: reason.trim().slice(0, 200),
+      reason: reasons[kind.trim()] + (details.trim() ? ': ' + details.trim().slice(0, 200) : ''),
       adTitle: AD.title || '',
       reporterEmail: window.currentUser.email || '',
       ts: Date.now()
@@ -69,7 +73,8 @@ async function loadAd() {
   try {
     const snap = await window.db.ref('ads/' + id).once('value');
     const a = snap.val();
-    if (!a || a.status !== 'active') { page.innerHTML = '<div class="empty-state"><div class="big">😕</div>Ye Ad ab available nahi hai।</div>'; return; }
+    if (!a) { page.innerHTML = '<div class="empty-state"><div class="big">😕</div>Ad nahi mila।</div>'; return; }
+    if (a.status !== 'active') { page.innerHTML = `<div class="empty-state"><div class="big">📦</div>${a.status === 'sold' ? 'Ye samaan bik chuka hai।' : a.status === 'expired' ? 'Is Ad ki muddat khatm ho gayi।' : 'Ye Ad filhaal band hai।'}<br><br><a href="index.html">Doosre Ads dekho</a></div>`; return; }
     AD = { id, ...a };
     const photos = (a.photos || []);
     const isOwner = window.currentUser && window.currentUser.uid === a.uid;
@@ -83,6 +88,8 @@ async function loadAd() {
         <div class="detail-meta">📍 ${esc(a.village)}, ${esc(a.district)} · ${timeAgo(a.createdAt)}</div>
         ${a.desc ? `<div class="detail-desc">${esc(a.desc)}</div>` : ''}
       </div>
+      <div class="card safety-note">⚠️ OTP/PIN mat batana. Advance payment mat bhejna. Saamaan dekhkar hi len-den karo.</div>
+      <button class="btn btn-outline" style="margin-bottom:12px" onclick="shareAd()">🔗 Ad share karo</button>
       <div class="card seller-card">
         <div class="seller-avatar">${esc((a.sellerName || 'S')[0].toUpperCase())}</div>
         <div style="flex:1">
@@ -92,11 +99,11 @@ async function loadAd() {
       </div>
       ${isOwner ? `
         <div class="btn-row" style="margin-top:6px">
-          <button class="btn btn-outline" onclick="markSold()">✅ बिक गया (हटाओ)</button>
+          <a class="btn btn-outline" href="post.html?edit=${encodeURIComponent(id)}">✏️ Ad बदलो</a>
+          <button class="btn btn-outline" onclick="markSold()">✅ बिक गया</button>
         </div>` : `
         <div class="btn-row" style="margin-top:6px">
-          <a class="btn btn-primary" href="tel:+91${a.phone}">📞 Call</a>
-          <a class="btn btn-amber" href="https://wa.me/91${a.phone}?text=${waText}" target="_blank">💬 WhatsApp</a>
+          ${a.contactMode === 'chat' || !/^\d{10}$/.test(a.phone || '') ? '' : `<a class="btn btn-primary" href="tel:+91${a.phone}">📞 Call</a><a class="btn btn-amber" href="https://wa.me/91${a.phone}?text=${waText}" target="_blank" rel="noopener">💬 WhatsApp</a>`}
         </div>
         <div class="btn-row" style="margin-top:10px">
           <button class="btn btn-chat" onclick="openChatWithSeller(AD)">💬 App Chat</button>
@@ -113,8 +120,16 @@ async function loadAd() {
   }
 }
 
+async function shareAd() {
+  const url = location.href;
+  if (navigator.share) { try { await navigator.share({ title: AD.title, url }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(url); showToast('🔗 Link copy ho gaya'); }
+  catch (e) { prompt('Is Ad ka link copy karo:', url); }
+}
+
 async function markSold() {
   if (!confirm('Ad हटा दें? (बिक गया)')) return;
+  if (!window.currentUser || !AD || AD.uid !== window.currentUser.uid) return;
   await window.db.ref('ads/' + id).update({ status: 'sold' });
   showToast('✅ Ad हटा दिया');
   setTimeout(() => location.href = 'myads.html', 700);

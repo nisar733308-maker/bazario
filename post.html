@@ -12,7 +12,7 @@
   <div class="topbar-row">
     <div>
       <div class="brand">Bazario<span>.</span></div>
-      <div class="brand-sub">नया Ad डालो</div>
+      <div class="brand-sub" id="form-heading">नया Ad डालो</div>
     </div>
     <button class="icon-btn" id="admin-btn" style="display:none" title="Admin Panel" onclick="location.href='admin.html'">🛡️</button>
     <button class="icon-btn" onclick="history.back()">✕</button>
@@ -26,15 +26,18 @@
     <div class="field"><label>Category *</label><select id="p-cat"></select></div>
     <div class="field"><label>Description</label><textarea id="p-desc" placeholder="चीज़ की हालत, कितनी पुरानी, क्यों बेच रहे हो..."></textarea></div>
     <div class="field">
-      <label>Photos (1-5) - pehli photo cover banegi</label>
+      <label>असली Photos (1-5) * - पहली photo cover बनेगी</label>
       <input type="file" id="p-photos" accept="image/*" multiple>
       <div class="photo-preview" id="photo-preview"></div>
     </div>
     <div class="btn-row">
-      <div class="field" style="flex:1"><label>ज़िला *</label><input id="p-district" placeholder="जैसे: Maharajganj"></div>
+      <div class="field" style="flex:1"><label>राज्य *</label><select id="p-state"><option value="">राज्य चुनें</option></select></div><div class="field" style="flex:1"><label>ज़िला *</label><select id="p-district"><option value="">पहले राज्य चुनें</option></select></div>
+      <div class="field" id="other-district-field" hidden><label>ज़िला सूची में नहीं? नाम लिखें *</label><input id="p-other-district" maxlength="80" placeholder="अपने ज़िले का नाम"></div>
       <div class="field" style="flex:1"><label>गाँव/शहर *</label><input id="p-village" placeholder="जैसे: Bahaduri Bazar"></div>
     </div>
-    <div class="field"><label>मोबाइल नंबर (buyer इसी पर call/WhatsApp करेगा) *</label><input id="p-phone" type="tel" maxlength="10" placeholder="10 अंकों का नंबर"></div>
+    <div class="field"><label>संपर्क कैसे करें?</label><select id="p-contact"><option value="public">Call / WhatsApp और App Chat</option><option value="chat">सिर्फ App Chat - नंबर सार्वजनिक नहीं होगा</option></select></div>
+    <div class="field" id="phone-field"><label>मोबाइल नंबर (buyer इसी पर call/WhatsApp करेगा) *</label><input id="p-phone" type="tel" maxlength="10" placeholder="10 अंकों का नंबर"></div>
+    <p class="safety-note">⚠️ OTP, PIN या advance payment किसी को मत दो। सामान देखकर ही लेन-देन करो।</p>
     <button class="btn btn-primary" id="submit-btn" onclick="submitAd()">🚀 Ad डालो</button>
   </div>
 </div>
@@ -51,8 +54,46 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <script src="./js/firebaseConfig.js"></script>
 <script src="./js/app.js"></script>
+<script src="./js/districts.js"></script>
 <script>
 let photos = [];
+const editId = new URLSearchParams(location.search).get('edit');
+let originalAd = null;
+const stateSelect = document.getElementById('p-state');
+const districtSelect = document.getElementById('p-district');
+stateSelect.innerHTML += BAZARIO_DISTRICTS.map(x => `<option value="${esc(x.state)}">${esc(x.state)}</option>`).join('');
+function updateDistricts(legacy = '') {
+  const state = BAZARIO_DISTRICTS.find(x => x.state === stateSelect.value);
+  const options = state ? state.districts : [];
+  districtSelect.innerHTML = '<option value="">ज़िला चुनें</option>' + options.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('') + (legacy && !options.includes(legacy) ? `<option value="${esc(legacy)}">${esc(legacy)} (पुराना Ad)</option>` : '') + '<option value="__other__">मेरा ज़िला सूची में नहीं है</option>';
+  districtSelect.value = legacy || '';
+  document.getElementById('other-district-field').hidden = true;
+  if (legacy && !options.includes(legacy)) districtSelect.dataset.legacy = 'true'; else delete districtSelect.dataset.legacy;
+}
+stateSelect.addEventListener('change', () => updateDistricts());
+districtSelect.addEventListener('change', () => { delete districtSelect.dataset.legacy; document.getElementById('other-district-field').hidden = districtSelect.value !== '__other__'; });
+const contactSelect = document.getElementById('p-contact');
+contactSelect.addEventListener('change', () => { document.getElementById('phone-field').hidden = contactSelect.value === 'chat'; });
+async function loadEdit() {
+  if (!editId || !window.currentUser || !window.FIREBASE_READY) return;
+  try {
+    const snap = await window.db.ref('ads/' + editId).once('value');
+    const a = snap.val();
+    if (!a || a.uid !== window.currentUser.uid) { alert('यह Ad आपका नहीं है या मौजूद नहीं है।'); location.href='myads.html'; return; }
+    originalAd = a;
+    document.getElementById('form-heading').textContent = 'Ad बदलो';
+    document.getElementById('submit-btn').textContent = '✅ बदलाव सेव करो';
+    for (const [key, value] of Object.entries({title:a.title, price:a.price, cat:a.category, desc:a.desc, village:a.village, phone:a.phone})) {
+      const el = document.getElementById('p-' + key); if (el) el.value = value || '';
+    }
+    contactSelect.value = a.contactMode === 'chat' ? 'chat' : 'public';
+    contactSelect.dispatchEvent(new Event('change'));
+    const state = BAZARIO_DISTRICTS.find(x => x.districts.some(d => d.toLowerCase() === String(a.district || '').toLowerCase())) || (/^maharajganj$/i.test(a.district || '') ? BAZARIO_DISTRICTS.find(x => x.state === 'Uttar Pradesh') : null);
+    stateSelect.value = a.state || (state && state.state) || '';
+    updateDistricts(a.district || '');
+    photos = (a.photos || []).slice(0,5); renderPhotoPreview();
+  } catch (e) { showToast('⚠️ Ad नहीं खुला'); }
+}
 
 document.getElementById('p-cat').innerHTML =
   window.CATEGORIES.filter(c => c.id !== 'all').map(c => `<option value="${c.id}">${c.icon} ${c.label}</option>`).join('');
@@ -78,28 +119,34 @@ async function submitAd() {
   const price = Number(document.getElementById('p-price').value);
   const category = document.getElementById('p-cat').value;
   const desc = document.getElementById('p-desc').value.trim();
-  const district = document.getElementById('p-district').value.trim();
+  const state = stateSelect.value;
+  const district = districtSelect.value === '__other__' ? document.getElementById('p-other-district').value.trim().replace(/\s+/g,' ') : districtSelect.value;
   const village = document.getElementById('p-village').value.trim();
   const phone = document.getElementById('p-phone').value.trim();
-  if (!title || !price || !district || !village || !phone) return alert('Title, दाम, ज़िला, गाँव और मोबाइल ज़रूरी हैं।');
-  if (!/^\d{10}$/.test(phone)) return alert('मोबाइल नंबर 10 अंकों का सही डालो।');
+  const chatOnly = contactSelect.value === 'chat';
+  if (!title || !Number.isFinite(price) || price <= 0 || !state || !district || !village) return alert('Title, दाम, राज्य, ज़िला और गाँव ज़रूरी हैं।');
+  if (!photos.length) return alert('कम से कम एक असली फोटो डालो।');
+  if (!chatOnly && !/^\d{10}$/.test(phone)) return alert('सार्वजनिक संपर्क के लिए सही 10 अंकों का नंबर डालो।');
+  if (editId && !originalAd) return alert('पहले Ad लोड होने दो।');
+  if (districtSelect.dataset.legacy && state && !confirm('Purane district spelling ko is Ad me rakhna hai? List me sahi district mile to use chun lo.')) return;
   const btn = document.getElementById('submit-btn');
   btn.disabled = true; btn.textContent = 'डाला जा रहा है...';
   try {
     const ad = {
-      title, price, category, desc, district, village, phone,
+      title, price, category, desc, state, district, village, contactMode: chatOnly ? 'chat' : 'public', phone: chatOnly ? null : phone,
       photos: photos.slice(0, 5),
       uid: window.currentUser.uid,
-      sellerName: (window.userProfile && window.userProfile.name) || 'Seller',
-      createdAt: Date.now(),
-      status: 'active'
+      sellerName: (originalAd && originalAd.sellerName) || (window.userProfile && window.userProfile.name) || 'Seller',
+      createdAt: (originalAd && originalAd.createdAt) || Date.now(),
+      status: (originalAd && originalAd.status) || 'active'
     };
-    await window.db.ref('ads').push(ad);
-    showToast('🎉 Ad live हो गया!');
+    if (editId) await window.db.ref('ads/' + editId).update(ad);
+    else await window.db.ref('ads').push(ad);
+    showToast(editId ? '✅ Ad बदल गया!' : '🎉 Ad live हो गया!');
     setTimeout(() => location.href = 'index.html', 800);
   } catch (e) {
     alert('Ad नहीं डल पाया: ' + e.message);
-    btn.disabled = false; btn.textContent = '🚀 Ad डालो';
+    btn.disabled = false; btn.textContent = editId ? '✅ बदलाव सेव करो' : '🚀 Ad डालो';
   }
 }
 
@@ -107,7 +154,8 @@ renderSetupBannerIfNeeded();
 injectAuthModal();
 initAuth((user) => {
   var ab=document.getElementById('admin-btn'); if(ab) ab.style.display=(user && user.email===window.ADMIN_EMAIL)?'':'none';
-  if (user && window.userProfile && window.userProfile.phone && !document.getElementById('p-phone').value) {
+  if (user && editId && !originalAd) loadEdit();
+  if (user && !editId && window.userProfile && window.userProfile.phone && !document.getElementById('p-phone').value) {
     document.getElementById('p-phone').value = window.userProfile.phone;
   }
 });
