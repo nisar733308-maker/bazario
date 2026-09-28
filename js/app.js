@@ -144,10 +144,12 @@ window.sendOtp = async (useVisible) => {
   const btn = document.getElementById('otp-btn');
   btn.disabled = true; btn.textContent = '\u23f3 \u092d\u0947\u091c\u093e \u091c\u093e \u0930\u0939\u093e \u0939\u0948...';
   try {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { size: useVisible ? 'normal' : 'invisible' });
-      await window.recaptchaVerifier.render();
-    }
+    window._resetRecaptcha();
+    const rc = document.getElementById('recaptcha-container');
+    const holder = document.createElement('div');
+    rc.appendChild(holder);
+    window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier(holder, { size: useVisible ? 'normal' : 'invisible' });
+    await window.recaptchaVerifier.render();
     window.confirmationResult = await window.auth.signInWithPhoneNumber('+91' + phone, window.recaptchaVerifier);
     document.getElementById('otp-section').style.display = '';
     const rs = document.getElementById('otp-resend'); if (rs) rs.style.display = '';
@@ -196,6 +198,7 @@ window.verifyOtp = async () => {
       await uref.set({ name: name || 'User', phone, email: '', createdAt: Date.now(), blocked: false });
     }
     window.closeAuthModal();
+    window._resetRecaptcha();
     showToast('\u2705 \u092e\u094b\u092c\u093e\u0907\u0932 \u0938\u0947 \u0932\u0949\u0917\u093f\u0928 \u0939\u094b \u0917\u092f\u093e!');
   } catch (e) {
     btn.disabled = false; btn.textContent = '\u2705 OTP Verify \u0915\u0930\u094b';
