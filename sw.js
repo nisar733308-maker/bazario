@@ -27,7 +27,7 @@ self.addEventListener('notificationclick', (e) => {
   }));
 });
 
-const CACHE_NAME = 'bazario-v12';
+const CACHE_NAME = 'bazario-v13';
 const STATIC_CACHE = [
   './', './index.html', './post.html', './ad.html', './myads.html', './admin.html', './chat.html', './profile.html',
   './css/style.css', './js/app.js', './js/firebaseConfig.js', './manifest.json',

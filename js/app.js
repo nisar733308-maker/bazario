@@ -62,6 +62,27 @@ window.closeAuthModal = () => {
   if (m) m.classList.remove('open');
 };
 
+window.authErrText = (e) => {
+  const s = ((e && e.code) || '') + ' ' + ((e && e.message) || '');
+  if (/invalid-credential|INVALID_LOGIN_CREDENTIALS|wrong-password|user-not-found|EMAIL_NOT_FOUND/.test(s))
+    return 'गलत ईमेल या पासवर्ड। अगर अकाउंट नहीं बनाया तो "नया अकाउंट" दबाएं, या "पासवर्ड भूल गए?" से रीसेट करें।';
+  if (/email-already-in-use|EMAIL_EXISTS/.test(s))
+    return 'यह ईमेल पहले से रजिस्टर है। सीधे लॉगिन करें या "पासवर्ड भूल गए?" से रीसेट करें।';
+  if (/invalid-email|INVALID_EMAIL/.test(s)) return 'ईमेल सही नहीं लग रहा - दोबारा लिखें।';
+  if (/too-many-requests|TOO_MANY_ATTEMPTS/.test(s)) return 'बहुत बार कोशिश हो गई। कुछ मिनट बाद दोबारा करें।';
+  if (/network-request-failed/.test(s)) return 'इंटरनेट की समस्या - नेट चेक करके दोबारा करें।';
+  return null;
+};
+
+window.doResetPass = async () => {
+  const email = document.getElementById('auth-email').value.trim();
+  if (!email) return alert('पहले ऊपर अपना ईमेल लिखें, फिर "पासवर्ड भूल गए?" दबाएं।');
+  try {
+    await window.auth.sendPasswordResetEmail(email);
+    alert('✅ पासवर्ड रीसेट लिंक ' + email + ' पर भेज दिया गया। ईमेल (और स्पैम फोल्डर) चेक करें।');
+  } catch (e) { alert(window.authErrText(e) || ('रीसेट error: ' + e.message)); }
+};
+
 window.doLogin = async () => {
   const email = document.getElementById('auth-email').value.trim();
   const pass = document.getElementById('auth-pass').value;
@@ -70,7 +91,7 @@ window.doLogin = async () => {
     await window.auth.signInWithEmailAndPassword(email, pass);
     window.closeAuthModal();
     window.showToast('✅ लॉगिन हो गया!');
-  } catch (e) { alert('लॉगिन error: ' + e.message); }
+  } catch (e) { alert(window.authErrText(e) || ('लॉगिन error: ' + e.message)); }
 };
 
 window.doRegister = async () => {
@@ -85,7 +106,7 @@ window.doRegister = async () => {
     await window.db.ref('users/' + cred.user.uid).set({ name, phone, email, createdAt: Date.now(), blocked: false });
     window.closeAuthModal();
     window.showToast('✅ रजिस्ट्रेशन सफल!');
-  } catch (e) { alert('रजिस्ट्रेशन error: ' + e.message); }
+  } catch (e) { alert(window.authErrText(e) || ('रजिस्ट्रेशन error: ' + e.message)); }
 };
 
 window.doLogout = () => {
@@ -110,6 +131,7 @@ window.injectAuthModal = () => {
         <button class="btn btn-primary" onclick="doLogin()">\u0932\u0949\u0917\u093f\u0928</button>
         <button class="btn btn-amber" onclick="doRegister()">\u0928\u092f\u093e \u0905\u0915\u093e\u0909\u0902\u091f</button>
       </div>
+      <div style="text-align:center;margin:-4px 0 8px"><span class="report-link" onclick="doResetPass()">\u092a\u093e\u0938\u0935\u0930\u094d\u0921 \u092d\u0942\u0932 \u0917\u090f?</span></div>
       <div class="otp-divider"><span>YA</span></div>
       <div class="field"><label>\ud83d\udcf1 \u092e\u094b\u092c\u093e\u0907\u0932 \u0938\u0947 \u0932\u0949\u0917\u093f\u0928 (OTP)</label><input id="otp-phone" type="tel" maxlength="10" placeholder="10 \u0905\u0902\u0915\u094b\u0902 \u0915\u093e \u092e\u094b\u092c\u093e\u0907\u0932"></div>
       <div id="recaptcha-container" style="margin-bottom:10px"></div>
