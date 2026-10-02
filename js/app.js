@@ -132,12 +132,6 @@ window.injectAuthModal = () => {
         <button class="btn btn-amber" onclick="doRegister()">\u0928\u092f\u093e \u0905\u0915\u093e\u0909\u0902\u091f</button>
       </div>
       <div style="text-align:center;margin:-4px 0 8px"><span class="report-link" onclick="doResetPass()">\u092a\u093e\u0938\u0935\u0930\u094d\u0921 \u092d\u0942\u0932 \u0917\u090f?</span></div>
-      <div class="otp-divider"><span>YA</span></div>
-      <div class="field"><label>\ud83d\udcf1 \u092e\u094b\u092c\u093e\u0907\u0932 \u0938\u0947 \u0932\u0949\u0917\u093f\u0928 (OTP)</label><input id="otp-phone" type="tel" maxlength="10" placeholder="10 \u0905\u0902\u0915\u094b\u0902 \u0915\u093e \u092e\u094b\u092c\u093e\u0907\u0932"></div>
-      <div id="recaptcha-container" style="margin-bottom:10px"></div>
-      <div class="field" id="otp-section" style="display:none"><label>SMS me aaya OTP</label><input id="otp-code" type="tel" maxlength="6" placeholder="6 \u0905\u0902\u0915\u094b\u0902 \u0915\u093e OTP"></div>
-      <div id="otp-resend" style="display:none;text-align:center;margin:-6px 0 10px"><span class="report-link" onclick="resendOtp()">\ud83d\udd04 OTP \u0928\u0939\u0940\u0902 \u0906\u092f\u093e? \u0926\u094b\u092c\u093e\u0930\u093e \u092d\u0947\u091c\u094b</span></div>
-      <button class="btn btn-outline" id="otp-btn" onclick="handleOtpBtn()">\ud83d\udce9 OTP \u092d\u0947\u091c\u094b</button>
     </div>
   </div>`;
   document.body.appendChild(div.firstElementChild);
